@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/icon.png" width="118" alt="Claude Agent Manager" />
+<img src="https://github.com/cderivan/claude-agent-manager/raw/HEAD/media/icon.png" width="118" alt="Claude Agent Manager" />
 
 # Claude Agent Manager
 
