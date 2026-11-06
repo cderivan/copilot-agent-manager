@@ -30,7 +30,7 @@ export function Header({
       }}
     >
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".09em", color: "#bbbbbb" }}>
-        {"CLAUDE\u00A0AGENT\u00A0MANAGER"}
+        {"COPILOT\u00A0AGENT\u00A0MANAGER"}
       </div>
       <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
         <button

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-const SCHEME = "claude-convo";
+const SCHEME = "copilot-convo";
 
 class MarkdownStore implements vscode.TextDocumentContentProvider {
   private readonly store = new Map<string, string>();

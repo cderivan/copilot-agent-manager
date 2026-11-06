@@ -201,7 +201,7 @@ export function SplitView({
               padding: "8px 12px",
             }}
           >
-            <ContinueBar t={selected} continueIn={state.continueIn} />
+            <ContinueBar t={selected} />
           </div>
         </div>
       )}

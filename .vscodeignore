@@ -1,0 +1,15 @@
+.freebuff/
+.vscode/**
+.github/**
+src/**
+out/**/*.map
+out/**/*.d.ts
+out/**/*.d.ts.map
+out/tests/**
+tests/**
+*.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+esbuild.js
+.gitignore
+

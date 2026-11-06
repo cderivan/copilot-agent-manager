@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import type { TranscriptRecord } from "../types";
+import type { CopilotEvent } from "../types";
 
 /** Read the last `maxBytes` of a file, dropping a partially cut first line. */
 export function readTail(filePath: string, maxBytes = 256 * 1024): string {
@@ -44,18 +44,21 @@ export function readText(filePath: string, maxBytes = 8 * 1024 * 1024): string {
 }
 
 /** Parse newline-delimited JSON, skipping blank or malformed lines. */
-export function parseJsonl(raw: string): TranscriptRecord[] {
-  const records: TranscriptRecord[] = [];
+export function parseJsonl(raw: string): CopilotEvent[] {
+  const events: CopilotEvent[] = [];
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed) {
       continue;
     }
     try {
-      records.push(JSON.parse(trimmed) as TranscriptRecord);
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") {
+        events.push(parsed as CopilotEvent);
+      }
     } catch {
       // Ignore partial lines and non-JSON noise.
     }
   }
-  return records;
+  return events;
 }

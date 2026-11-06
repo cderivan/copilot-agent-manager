@@ -1,22 +1,24 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { ScopeName } from "../types";
-import { isDirectory, projectsDir, workspaceProjectKeys } from "./paths";
+import { readText } from "./fsText";
+import { inWorkspace, isDirectory, isFile, sessionsDir } from "./paths";
 
-export interface SubagentEntry {
-  fileId: string;
-  jsonlPath: string;
-  metaPath: string;
-  mtimeMs: number;
+export interface SessionMeta {
+  cwd: string;
+  gitBranch: string;
+  name: string;
+  clientName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SessionEntry {
   sessionId: string;
-  projectDir: string;
-  mainPath: string;
-  subagentsDir: string;
+  dir: string;
+  eventsPath: string;
   mtimeMs: number;
-  subagents: SubagentEntry[];
+  meta: SessionMeta;
 }
 
 export function listDirectory(dir: string): string[] {
@@ -35,73 +37,92 @@ export function mtimeOf(target: string): number {
   }
 }
 
-export function listProjectSessions(projectDir: string, maxSubagents: number): SessionEntry[] {
-  const sessions: SessionEntry[] = [];
-  for (const name of listDirectory(projectDir)) {
-    if (!name.endsWith(".jsonl")) {
-      continue;
-    }
-    const sessionId = name.slice(0, -6);
-    const mainPath = path.join(projectDir, name);
-    const subagentsDir = path.join(projectDir, sessionId, "subagents");
-    const subagents: SubagentEntry[] = [];
-    if (isDirectory(subagentsDir)) {
-      for (const subName of listDirectory(subagentsDir)) {
-        if (!subName.endsWith(".jsonl")) {
-          continue;
-        }
-        const fileId = subName.slice(0, -6);
-        const jsonlPath = path.join(subagentsDir, subName);
-        subagents.push({
-          fileId,
-          jsonlPath,
-          metaPath: path.join(subagentsDir, `${fileId}.meta.json`),
-          mtimeMs: mtimeOf(jsonlPath),
-        });
-      }
-    }
-    subagents.sort((a, b) => b.mtimeMs - a.mtimeMs);
-
-    sessions.push({
-      sessionId,
-      projectDir,
-      mainPath,
-      subagentsDir,
-      mtimeMs: mtimeOf(mainPath),
-      subagents: subagents.slice(0, maxSubagents),
-    });
+function unquote(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
   }
-  return sessions;
+  return trimmed;
 }
 
-export function discoverSessions(
-  scope: ScopeName,
-  maxSessions: number,
-  maxSubagents: number
-): SessionEntry[] {
-  const root = projectsDir();
+/** Copilot CLI writes `workspace.yaml` (session name, cwd, branch) next to the events. */
+export function readSessionMeta(dir: string): SessionMeta {
+  const meta: SessionMeta = {
+    cwd: "",
+    gitBranch: "",
+    name: "",
+    clientName: "",
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  for (const line of readText(path.join(dir, "workspace.yaml"), 64 * 1024).split("\n")) {
+    const match = /^([a-z_]+):\s*(.*)$/.exec(line.trim());
+    if (!match) {
+      continue;
+    }
+    const value = unquote(match[2]);
+    switch (match[1]) {
+      case "cwd":
+        meta.cwd = value;
+        break;
+      case "branch":
+        meta.gitBranch = value;
+        break;
+      case "name":
+        meta.name = value;
+        break;
+      case "client_name":
+        meta.clientName = value;
+        break;
+      case "created_at":
+        meta.createdAt = value;
+        break;
+      case "updated_at":
+        meta.updatedAt = value;
+        break;
+    }
+  }
+
+  if (!meta.cwd) {
+    try {
+      const data = JSON.parse(readText(path.join(dir, "vscode.metadata.json"), 64 * 1024));
+      meta.cwd = String(data?.workspaceFolder?.folderPath || "");
+    } catch {
+      // No metadata file; the session keeps an empty cwd.
+    }
+  }
+
+  return meta;
+}
+
+export function discoverSessions(scope: ScopeName, maxSessions: number): SessionEntry[] {
+  const root = sessionsDir();
   if (!isDirectory(root)) {
     return [];
   }
 
-  let projectDirs: string[];
-  if (scope === "workspace") {
-    const keys = new Set(workspaceProjectKeys());
-    projectDirs = listDirectory(root)
-      .filter((name) => keys.has(name))
-      .map((name) => path.join(root, name));
-    if (projectDirs.length === 0) {
-      projectDirs = listDirectory(root).map((name) => path.join(root, name));
+  const entries: SessionEntry[] = [];
+  for (const name of listDirectory(root)) {
+    const dir = path.join(root, name);
+    const eventsPath = path.join(dir, "events.jsonl");
+    if (!isDirectory(dir) || !isFile(eventsPath)) {
+      continue;
     }
-  } else {
-    projectDirs = listDirectory(root).map((name) => path.join(root, name));
+    entries.push({
+      sessionId: name,
+      dir,
+      eventsPath,
+      mtimeMs: mtimeOf(eventsPath),
+      meta: readSessionMeta(dir),
+    });
   }
-  projectDirs = projectDirs.filter(isDirectory);
 
-  const sessions: SessionEntry[] = [];
-  for (const projectDir of projectDirs) {
-    sessions.push(...listProjectSessions(projectDir, maxSubagents));
-  }
-  sessions.sort((a, b) => b.mtimeMs - a.mtimeMs);
-  return sessions.slice(0, maxSessions);
+  entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const scoped =
+    scope === "workspace" ? entries.filter((entry) => inWorkspace(entry.meta.cwd)) : entries;
+  return scoped.slice(0, maxSessions);
 }

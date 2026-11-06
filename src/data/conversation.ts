@@ -1,13 +1,7 @@
-import type { ConversationMessage, TranscriptRecord } from "../types";
+import type { ConversationMessage, CopilotEvent } from "../types";
+import { dataOf, describeToolCall, eventAgentId, formatClock, textOfEvent } from "./events";
 import { parseJsonl, readText } from "./fsText";
-import {
-  contentBlocks,
-  describeToolCall,
-  formatClock,
-  textOf,
-  toolResultBlocks,
-  toolUseBlocks,
-} from "./transcripts";
+import { subagentSpecs } from "./model";
 
 function truncate(value: string, max: number): string {
   if (value.length > max) {
@@ -16,45 +10,50 @@ function truncate(value: string, max: number): string {
   return value;
 }
 
-/** A user turn that only carries tool results is not conversation text. */
-function isToolResultOnly(record: TranscriptRecord): boolean {
-  const blocks = contentBlocks(record);
-  return (
-    toolResultBlocks(record).length > 0 &&
-    blocks.length > 0 &&
-    blocks.every((block) => block.type === "tool_result")
-  );
+/** Events belonging to one agent: a subagent's own, or the main agent's. */
+function scopedEvents(transcriptPath: string, agentId: string): CopilotEvent[] {
+  const events = parseJsonl(readText(transcriptPath));
+  const specs = subagentSpecs(events);
+  return events.filter((event) => {
+    const id = eventAgentId(event);
+    return agentId ? id === agentId : !id || !specs.has(id);
+  });
+}
+
+function toolRequestsOf(event: CopilotEvent): Array<Record<string, any>> {
+  const requests = dataOf(event).toolRequests;
+  return Array.isArray(requests) ? (requests as Array<Record<string, any>>) : [];
 }
 
 /** Compact feed of the recent conversation, for the webview's Conversation tab. */
-export function conversationMessages(transcriptPath: string): ConversationMessage[] {
-  const records = parseJsonl(readText(transcriptPath)).slice(-500);
+export function conversationMessages(
+  transcriptPath: string,
+  agentId = ""
+): ConversationMessage[] {
   const messages: ConversationMessage[] = [];
 
-  for (const record of records) {
-    const role = record.message?.role;
-    if (role !== "user" && role !== "assistant") {
-      continue;
-    }
-    if (role === "user") {
-      if (isToolResultOnly(record)) {
-        continue;
-      }
-      const text = textOf(record);
+  for (const event of scopedEvents(transcriptPath, agentId).slice(-500)) {
+    if (event.type === "user.message") {
+      const text = textOfEvent(event);
       if (text) {
-        messages.push({ role, avatar: "U", text: truncate(text, 1200), mono: false });
+        messages.push({ role: "user", avatar: "U", text: truncate(text, 1200), mono: false });
       }
       continue;
     }
-    const text = textOf(record);
-    if (text) {
-      messages.push({ role, avatar: "✳", text: truncate(text, 1200), mono: false });
+    if (event.type !== "assistant.message") {
+      continue;
     }
-    for (const block of toolUseBlocks(record)) {
+    const text = textOfEvent(event);
+    if (text) {
+      messages.push({ role: "assistant", avatar: "✦", text: truncate(text, 1200), mono: false });
+    }
+    for (const request of toolRequestsOf(event)) {
+      const args =
+        request.arguments && typeof request.arguments === "object" ? request.arguments : {};
       messages.push({
         role: "assistant",
         avatar: "→",
-        text: `[${block.name}] ${describeToolCall(block)}`.trim(),
+        text: `[${String(request.name || "tool")}] ${describeToolCall(args)}`.trim(),
         mono: true,
       });
     }
@@ -62,9 +61,12 @@ export function conversationMessages(transcriptPath: string): ConversationMessag
   return messages.slice(-80);
 }
 
-/** Readable Markdown rendering of a transcript, opened via a virtual document. */
-export function conversationMarkdown(transcriptPath: string, title: string): string {
-  const records = parseJsonl(readText(transcriptPath)).slice(-500);
+/** Readable Markdown rendering of a conversation, opened via a virtual document. */
+export function conversationMarkdown(
+  transcriptPath: string,
+  title: string,
+  agentId = ""
+): string {
   const lines: string[] = [
     `# ${title}`,
     "",
@@ -72,37 +74,35 @@ export function conversationMarkdown(transcriptPath: string, title: string): str
     "",
   ];
 
-  for (const record of records) {
-    const role = record.message?.role;
-    if (role !== "user" && role !== "assistant") {
-      continue;
-    }
-    const time = formatClock(record.timestamp);
-    if (role === "user") {
-      if (isToolResultOnly(record)) {
-        continue;
-      }
-      const text = textOf(record);
+  for (const event of scopedEvents(transcriptPath, agentId).slice(-500)) {
+    const time = formatClock(event.timestamp);
+    if (event.type === "user.message") {
+      const text = textOfEvent(event);
       if (text) {
         lines.push(`### \u{1F9D1} You \u00B7 ${time}`, "", text, "");
       }
       continue;
     }
-    const text = textOf(record);
-    const tools = toolUseBlocks(record);
+    if (event.type !== "assistant.message") {
+      continue;
+    }
+    const text = textOfEvent(event);
     if (text) {
-      lines.push(`### \u2733 Claude \u00B7 ${time}`, "", text, "");
+      lines.push(`### \u2733 Copilot \u00B7 ${time}`, "", text, "");
     }
-    for (const block of tools) {
-      lines.push(`- \`${block.name}\` ${describeToolCall(block)}`.trimEnd());
+    const requests = toolRequestsOf(event);
+    for (const request of requests) {
+      const args =
+        request.arguments && typeof request.arguments === "object" ? request.arguments : {};
+      lines.push(`- \`${String(request.name || "tool")}\` ${describeToolCall(args)}`.trimEnd());
     }
-    if (tools.length) {
+    if (requests.length) {
       lines.push("");
     }
   }
 
   if (lines.length <= 4) {
-    lines.push("_No conversation text found in the recent transcript tail._");
+    lines.push("_No conversation text found in the recent session events._");
   }
   return lines.join("\n");
 }

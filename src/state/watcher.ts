@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as vscode from "vscode";
 
-/** Watches the projects tree recursively, with a polling fallback. */
+/** Watches the Copilot session-state tree recursively, with a polling fallback. */
 export class TranscriptWatcher implements vscode.Disposable {
   private fsWatcher?: fs.FSWatcher;
   private pollTimer?: NodeJS.Timeout;

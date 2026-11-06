@@ -2,52 +2,41 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
+import { chatStoreMarkdown } from "../data/chatStore";
 import { conversationMarkdown } from "../data/conversation";
+import { dataOf } from "../data/events";
 import { parseJsonl, readText } from "../data/fsText";
-import { toolUseBlocks } from "../data/transcripts";
-import type { ContinueTarget } from "../types";
 import { openConversation } from "./conversationProvider";
 import { openDiff } from "./diffProvider";
 
 export interface ActionPayload {
   transcriptPath?: string;
   name?: string;
+  agentId?: string;
+  source?: "events" | "chat-store";
   path?: string;
   cwd?: string;
   file?: string;
   sessionId?: string;
-  target?: ContinueTarget;
 }
 
-/** Newest Claude Code CLI binary shipped inside the official extension, if installed. */
-function resolveClaudeBinary(): string {
-  try {
-    const extensionsDir = path.join(os.homedir(), ".vscode", "extensions");
-    const binaryName = process.platform === "win32" ? "claude.exe" : "claude";
-    const candidates: Array<{ version: [number, number, number]; bin: string }> = [];
-    for (const entry of fs.readdirSync(extensionsDir)) {
-      const match = entry.match(/^anthropic\.claude-code-(\d+)\.(\d+)\.(\d+)/);
-      if (!match) {
-        continue;
+/** Copilot CLI binary from the usual install locations, else the one on PATH. */
+function resolveCopilotBinary(): string {
+  const candidates = [
+    path.join(os.homedir(), ".copilot", "bin", "copilot"),
+    "/opt/homebrew/bin/copilot",
+    "/usr/local/bin/copilot",
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.statSync(candidate).isFile()) {
+        return candidate;
       }
-      const bin = path.join(extensionsDir, entry, "resources", "native-binary", binaryName);
-      if (fs.existsSync(bin)) {
-        candidates.push({ version: [+match[1], +match[2], +match[3]], bin });
-      }
+    } catch {
+      // Keep looking.
     }
-    candidates.sort(
-      (a, b) =>
-        a.version[0] - b.version[0] ||
-        a.version[1] - b.version[1] ||
-        a.version[2] - b.version[2]
-    );
-    if (candidates.length) {
-      return candidates[candidates.length - 1].bin;
-    }
-  } catch {
-    // Fall through to PATH lookup.
   }
-  return "claude";
+  return "copilot";
 }
 
 function resolveFilePath(filePath: string | undefined, cwd: string | undefined) {
@@ -63,7 +52,7 @@ function resolveFilePath(filePath: string | undefined, cwd: string | undefined) 
   return undefined;
 }
 
-/** Last recorded edit to a file in a transcript, as before/after text. */
+/** Last recorded edit to a file in a session's events, as before/after text. */
 function recordedEdit(
   transcriptPath: string | undefined,
   file: string | undefined
@@ -71,27 +60,26 @@ function recordedEdit(
   if (!transcriptPath || !file) {
     return null;
   }
-  const records = parseJsonl(readText(transcriptPath));
   let edit: { oldText: string; newText: string } | null = null;
-  for (const record of records) {
-    for (const block of toolUseBlocks(record)) {
-      const input = block.input || {};
-      if (block.name === "Edit" && input.file_path === file) {
-        edit = {
-          oldText: String(input.old_string ?? ""),
-          newText: String(input.new_string ?? ""),
-        };
-      } else if (block.name === "MultiEdit" && input.file_path === file && Array.isArray(input.edits)) {
-        const oldText = (input.edits as Array<Record<string, unknown>>)
-          .map((item) => String(item.old_string ?? ""))
-          .join("\n");
-        const newText = (input.edits as Array<Record<string, unknown>>)
-          .map((item) => String(item.new_string ?? ""))
-          .join("\n");
-        edit = { oldText, newText };
-      } else if (block.name === "Write" && input.file_path === file) {
-        edit = { oldText: "", newText: String(input.content ?? "") };
-      }
+  for (const event of parseJsonl(readText(transcriptPath))) {
+    if (event.type !== "tool.execution_start") {
+      continue;
+    }
+    const data = dataOf(event);
+    const args = data.arguments;
+    if (!args || typeof args !== "object") {
+      continue;
+    }
+    if (args.path !== file) {
+      continue;
+    }
+    if (data.toolName === "edit") {
+      edit = {
+        oldText: String(args.old_str ?? ""),
+        newText: String(args.new_str ?? ""),
+      };
+    } else if (data.toolName === "create" || data.toolName === "write") {
+      edit = { oldText: "", newText: String(args.file_text ?? "") };
     }
   }
   return edit;
@@ -101,10 +89,14 @@ export async function handleAction(action: string, payload: ActionPayload): Prom
   switch (action) {
     case "readConversation": {
       if (payload.transcriptPath && fs.existsSync(payload.transcriptPath)) {
-        const markdown = conversationMarkdown(payload.transcriptPath, payload.name || "Conversation");
+        const title = payload.name || "Conversation";
+        const markdown =
+          payload.source === "chat-store"
+            ? chatStoreMarkdown(payload.transcriptPath, payload.sessionId || "", title)
+            : conversationMarkdown(payload.transcriptPath, title, payload.agentId || "");
         await openConversation(payload.name || "conversation", markdown);
       } else {
-        vscode.window.showWarningMessage("Transcript not found for this agent.");
+        vscode.window.showWarningMessage("Session events not found for this agent.");
       }
       return;
     }
@@ -142,40 +134,14 @@ export async function handleAction(action: string, payload: ActionPayload): Prom
     case "continueSession": {
       const sessionId = payload.sessionId || "";
       const cwd = payload.cwd && fs.existsSync(payload.cwd) ? payload.cwd : undefined;
-      const configured = vscode.workspace
-        .getConfiguration("claudeAgentManager")
-        .get<ContinueTarget>("continueIn", "extension");
-      if ((payload.target || configured) === "extension") {
-        const commands = await vscode.commands.getCommands(true);
-        if (commands.includes("claude-vscode.editor.open")) {
-          try {
-            await vscode.commands.executeCommand(
-              "claude-vscode.editor.open",
-              sessionId,
-              undefined,
-              vscode.ViewColumn.Active
-            );
-            return;
-          } catch {
-            vscode.window.showWarningMessage(
-              "Couldn't open the Claude Code extension view — falling back to terminal."
-            );
-          }
-        } else {
-          vscode.window.showWarningMessage(
-            "Claude Code extension not found — opening in terminal instead."
-          );
-        }
-      }
       const terminal = vscode.window.createTerminal({
-        name: `Claude \u00B7 resume ${sessionId.slice(0, 8)}`,
+        name: `Copilot \u00B7 resume ${sessionId.slice(0, 8)}`,
         cwd,
       });
       terminal.show();
-      const binary = resolveClaudeBinary();
-      terminal.sendText(
-        `${binary.includes(" ") ? `"${binary}"` : binary} --resume ${sessionId}`
-      );
+      const binary = resolveCopilotBinary();
+      const quoted = binary.includes(" ") ? `"${binary}"` : binary;
+      terminal.sendText(`${quoted} --resume=${sessionId}`);
       return;
     }
   }

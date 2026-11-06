@@ -114,11 +114,7 @@ export function AgentTree({
               </div>
             )}
             {active && (
-              <AgentDetail
-                a={agent}
-                indent={6 + agent.depth * 16}
-                continueIn={state.continueIn}
-              />
+              <AgentDetail a={agent} indent={6 + agent.depth * 16} />
             )}
           </div>
         );
@@ -128,15 +124,7 @@ export function AgentTree({
   );
 }
 
-function AgentDetail({
-  a,
-  indent,
-  continueIn,
-}: {
-  a: Agent;
-  indent: number;
-  continueIn: AppState["continueIn"];
-}) {
+function AgentDetail({ a, indent }: { a: Agent; indent: number }) {
   return (
     <div
       style={{
@@ -209,7 +197,7 @@ function AgentDetail({
         <LogTail lines={a.logTail} max={6} />
       </div>
       <div style={{ borderTop: "1px solid #2d2d2d", padding: "8px 10px" }}>
-        <ContinueBar t={a} continueIn={continueIn} />
+        <ContinueBar t={a} />
       </div>
     </div>
   );

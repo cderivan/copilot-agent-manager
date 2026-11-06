@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import type { ContinueTarget, SearchResult } from "../../types";
+import type { SearchResult } from "../../types";
 import { runAction } from "../api";
 import { timeAgo } from "../theme";
 import { ContinueBar } from "./ContinueBar";
@@ -37,7 +37,6 @@ export function SearchPanel({
   allProjects,
   setAllProjects,
   runNow,
-  continueIn,
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -46,7 +45,6 @@ export function SearchPanel({
   allProjects: boolean;
   setAllProjects: (value: boolean) => void;
   runNow: () => void;
-  continueIn: ContinueTarget;
 }) {
   const trimmed = query.trim();
   return (
@@ -130,7 +128,7 @@ export function SearchPanel({
             }}
           >
             {
-              "Search the full text of every Claude Code conversation. Find a past session by what was said in it, then "
+              "Search the full text of every Copilot session. Find a past session by what was said in it, then "
             }
             <b style={{ color: "#9a9a9a" }}>Continue</b> or <b style={{ color: "#9a9a9a" }}>Read</b>{" "}
             it.
@@ -227,8 +225,9 @@ export function SearchPanel({
                   cwd: result.cwd,
                   transcriptPath: result.transcriptPath,
                   name: result.agentName,
+                  resumable: result.resumable,
+                  source: result.source,
                 }}
-                continueIn={continueIn}
               />
             </div>
           </div>

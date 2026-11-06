@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
 import { readBuildConfig, readScanConfig } from "../config";
+import { readChatStore, type ChatSessionRecord } from "../data/chatStore";
 import { discoverSessions } from "../data/discovery";
 import { buildState } from "../data/model";
-import { projectsDir, resolveClaudeHome } from "../data/paths";
+import { chatStorePath, resolveCopilotHome, sessionsDir } from "../data/paths";
 import type { Agent, AgentStatus, AppState, ToastInfo } from "../types";
 import { TranscriptWatcher } from "./watcher";
 
@@ -12,7 +13,11 @@ export class AgentMonitor implements vscode.Disposable {
   private lastState?: AppState;
   private selectedId: string | null = null;
   private readonly lastStatus = new Map<string, AgentStatus>();
+  private chatRecords: ChatSessionRecord[] = [];
+  private chatPath = "";
   private firstBuildDone = false;
+
+  constructor(private readonly userDir?: string) {}
   private readonly stateCbs: Array<(state: AppState) => void> = [];
   private readonly toastCbs: Array<(toast: ToastInfo) => void> = [];
 
@@ -56,6 +61,15 @@ export class AgentMonitor implements vscode.Disposable {
     return this.lastState?.agents.find((agent) => agent.id === id);
   }
 
+  /** VS Code chat-store sessions, for full-text search. */
+  get chatSessions(): ChatSessionRecord[] {
+    return this.chatRecords;
+  }
+
+  get chatDbPath(): string {
+    return this.chatPath;
+  }
+
   setSelected(id: string | null): void {
     this.selectedId = id;
     if (this.lastState) {
@@ -72,18 +86,26 @@ export class AgentMonitor implements vscode.Disposable {
   private startWatcher(): void {
     this.watcher?.dispose();
     const pollSeconds = vscode.workspace
-      .getConfiguration("claudeAgentManager")
+      .getConfiguration("copilotAgentManager")
       .get("pollSeconds", 4);
-    this.watcher = new TranscriptWatcher(projectsDir(), () => this.rebuild(), pollSeconds);
+    this.watcher = new TranscriptWatcher(sessionsDir(), () => this.rebuild(), pollSeconds);
     this.watcher.start();
   }
 
   private rebuild(): void {
-    const claudeHome = resolveClaudeHome();
+    const copilotHome = resolveCopilotHome();
     const scan = readScanConfig();
-    const cfg = readBuildConfig(claudeHome);
-    const entries = discoverSessions(scan.scope, scan.maxSessions, scan.maxSubagents);
-    const state = buildState(entries, this.selectedId, cfg, Date.now());
+    const cfg = readBuildConfig(copilotHome);
+    const entries = discoverSessions(scan.scope, scan.maxSessions);
+    this.chatPath = chatStorePath(this.userDir);
+    this.chatRecords = scan.includeChatStore ? readChatStore(this.chatPath) : [];
+    const state = buildState(
+      entries,
+      { dbPath: this.chatPath, records: this.chatRecords },
+      this.selectedId,
+      cfg,
+      Date.now()
+    );
     this.selectedId = state.selectedId;
     this.lastState = state;
     this.detectFinishes(state);
@@ -100,7 +122,7 @@ export class AgentMonitor implements vscode.Disposable {
 
   private detectFinishes(state: AppState): void {
     const notify = vscode.workspace
-      .getConfiguration("claudeAgentManager")
+      .getConfiguration("copilotAgentManager")
       .get("notifyOnFinish", true);
     for (const agent of state.agents) {
       const previous = this.lastStatus.get(agent.id);
@@ -120,7 +142,7 @@ export class AgentMonitor implements vscode.Disposable {
           callback(toast);
         }
         if (notify) {
-          const message = `Claude agent \u201C${agent.name}\u201D ${
+          const message = `Copilot agent \u201C${agent.name}\u201D ${
             finished ? "finished" : "hit an error"
           }.`;
           if (finished) {

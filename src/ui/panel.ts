@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import { updateSetting } from "../config";
+import { chatStoreMessages } from "../data/chatStore";
 import { conversationMessages } from "../data/conversation";
 import { searchTranscripts } from "../data/search";
 import type { AgentMonitor } from "../state/monitor";
-import type { AccentName, ContinueTarget, LayoutName, ScopeName } from "../types";
+import type { AccentName, LayoutName, ScopeName } from "../types";
 import { handleAction } from "./actions";
 import { buildWebviewHtml } from "./html";
 
@@ -15,7 +16,6 @@ type IncomingMessage =
   | { type: "setLayout"; layout: LayoutName }
   | { type: "setAccent"; accent: AccentName }
   | { type: "setScope"; scope: ScopeName }
-  | { type: "setContinueIn"; target: ContinueTarget }
   | { type: "refresh" }
   | { type: "loadConversation"; id: string }
   | { type: "search"; query: string; allProjects: boolean }
@@ -87,9 +87,6 @@ async function handleMessage(
     case "setScope":
       await updateSetting("scope", message.scope);
       return;
-    case "setContinueIn":
-      await updateSetting("continueIn", message.target);
-      return;
     case "refresh":
       monitor.refresh();
       return;
@@ -99,13 +96,21 @@ async function handleMessage(
         post({
           type: "conversation",
           agentId: message.id,
-          messages: conversationMessages(agent.transcriptPath),
+          messages:
+            agent.source === "chat-store"
+              ? chatStoreMessages(agent.transcriptPath, agent.sessionId)
+              : conversationMessages(agent.transcriptPath, agent.eventAgentId),
         });
       }
       return;
     }
     case "search": {
-      const results = await searchTranscripts(message.query, message.allProjects);
+      const results = await searchTranscripts(
+        message.query,
+        message.allProjects,
+        monitor.chatSessions,
+        monitor.chatDbPath
+      );
       post({ type: "searchResults", query: message.query, results });
       return;
     }

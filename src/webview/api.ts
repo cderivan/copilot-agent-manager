@@ -1,4 +1,4 @@
-import type { AccentName, ContinueTarget, LayoutName, ScopeName } from "../types";
+import type { AccentName, LayoutName, ScopeName } from "../types";
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -26,10 +26,6 @@ export function setAccent(accent: AccentName): void {
 
 export function setScope(scope: ScopeName): void {
   post({ type: "setScope", scope });
-}
-
-export function setContinueIn(target: ContinueTarget): void {
-  post({ type: "setContinueIn", target });
 }
 
 export function refresh(): void {

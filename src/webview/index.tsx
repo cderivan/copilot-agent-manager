@@ -85,7 +85,7 @@ export function App() {
   if (!state) {
     return (
       <div style={{ padding: 20, color: "#8a8a8a", fontSize: 12.5 }}>
-        Loading Claude agents…
+        Loading Copilot agents…
       </div>
     );
   }
@@ -131,7 +131,6 @@ export function App() {
           allProjects={allProjects}
           setAllProjects={setAllProjects}
           runNow={runNow}
-          continueIn={state.continueIn}
         />
       ) : (
         <>

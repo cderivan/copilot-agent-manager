@@ -1,15 +1,10 @@
 <div align="center">
 
-<img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/icon.png" width="118" alt="Claude Agent Manager" />
+<img src="media/icon.png" width="118" alt="Copilot Agent Manager" />
 
-# Claude Agent Manager
+# Copilot Agent Manager
 
-### See exactly what your Claude Code agents — and every subagent — are doing, **live**, without leaving VS Code.
-
-[![Version](https://img.shields.io/visual-studio-marketplace/v/Damilola.claude-agent-manager?style=flat-square&label=VS%20Code%20Marketplace&color=d97757)](https://marketplace.visualstudio.com/items?itemName=Damilola.claude-agent-manager)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/Damilola.claude-agent-manager?style=flat-square&color=d97757)](https://marketplace.visualstudio.com/items?itemName=Damilola.claude-agent-manager)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/Damilola.claude-agent-manager?style=flat-square&color=d97757)](https://marketplace.visualstudio.com/items?itemName=Damilola.claude-agent-manager)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://github.com/dammyboss/claude-agent-manager/blob/HEAD/LICENSE)
+### See exactly what your Copilot agents — and every subagent they spawn — are doing, **live**, without leaving VS Code.
 
 **100% local · read-only · zero config**
 
@@ -17,52 +12,41 @@
 
 ---
 
-> When Claude Code spins up an orchestrator and a swarm of subagents, the terminal scrolls too fast to follow. **Claude Agent Manager** turns that firehose into a calm, live dashboard — the full agent tree, what each one is doing *right now*, what it changed, what it cost, and every conversation you've ever had — searchable in a keystroke.
-
-<div align="center">
-
-<img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/demo.gif" width="820" alt="Claude Agent Manager — live demo: agent tree, search, continue, full-screen" />
-
-</div>
+> Copilot's chat window shows you the final answer, not the swarm behind it. **Copilot Agent Manager** turns the session events Copilot already writes into a calm, live dashboard — the full agent tree, what each agent is doing *right now*, what it changed, what it cost, and every session you've ever run — searchable in a keystroke.
 
 ---
 
 ## Why you'll want it
 
-- 👀 **Never lose track of a subagent again.** A live tree shows the orchestrator → every subagent, with status, current tool, and progress.
-- 🧭 **Understand a run at a glance** instead of scrolling thousands of terminal lines.
-- 🔎 **Find any past conversation by what was said in it** — across every project — and jump right back in.
-- 💎 **Beautiful, native, and safe.** Pure VS Code styling, read-only, all on your machine. It never touches your running sessions.
+- 👀 **Never lose track of a subagent again.** A live tree shows the main agent → every subagent it spawns, with status, current tool, and progress.
+- 🧭 **Understand a run at a glance** instead of scrolling a chat transcript.
+- 🔎 **Find any past session by what was said in it** — across every project — and resume it in one click.
+- 💎 **Native and safe.** Pure VS Code styling, read-only, all on your machine. It never touches your running sessions.
 
 ---
 
 ## ✨ Features
 
 ### 🌳 Live agent & subagent tree
-Your whole run, structured. The main/orchestrator agent with its subagents nested underneath — names and tasks pulled straight from Claude Code. Spinners for running, badges for `done` / `error` / `waiting`, token counts, and TodoWrite-based progress when it's real (never a fake bar).
-
-<!-- <img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/screenshot-tree.png" width="820" alt="Agent tree" /> -->
+Your whole run, structured. The main agent with the subagents it spawned nested underneath — names and tasks pulled straight from Copilot's `subagent.started` events. Spinners for running, badges for `done` / `error` / `waiting`, token counts, and progress only when Copilot actually reports todos (never a fake bar).
 
 ### ⚡ "Right now" — the current tool call
-For every running agent, see the exact tool in flight (`Edit src/auth/session.ts`, `Bash npm test`, `Grep …`) plus a **live streaming activity log** that updates as it works.
+For every running agent, see the exact tool in flight (`edit src/auth/session.ts`, `bash npm test`, `grep …`) plus a **live streaming activity log** that updates as it works.
 
-<!-- <img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/screenshot-activity.png" width="820" alt="Live activity" /> -->
+### 💬 VS Code chat sessions, too
+Editor chats live in VS Code's own Copilot store (`session-store.db`), not in the CLI session tree. Copilot Agent Manager reads that SQLite store directly — recent turns included, even while they still only exist in its write-ahead log — and lists those sessions next to CLI ones. They expose their turns and the **files they referenced** (`session_files`), but no tool stream and no subagents, so **Continue** stays hidden for them.
 
-### 🔍 Search every conversation (full-text)
-Hit the **search** icon and type a keyword. Claude Agent Manager scans the full text of **every transcript on your machine** with ripgrep — sub-second — and returns the matching conversations (subagent hits folded in), each with a highlighted snippet. Then **Continue** or **Read** it in one click.
+### 🔍 Search every session (full-text)
+Hit the **search** icon and type a keyword. The extension scans the full text of **every Copilot session's events** with ripgrep — sub-second — and returns matching sessions (subagent hits folded in), each with a highlighted snippet. Then **Continue** or **Read** it in one click.
 
-<!-- <img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/screenshot-search.png" width="820" alt="Conversation search" /> -->
-
-### ▶️ Continue any session — your way
-Pick up right where a session left off. The **Continue** button resumes it in **Claude Code's editor view** *or* a **terminal** (`claude --resume`) — your choice, from a dropdown that remembers your default.
+### ▶️ Continue any session
+Pick up right where a session left off: **Continue** opens a terminal in the session's project and runs `copilot --resume=<session-id>`.
 
 ### 📂 Session-wide changes
-One combined, PR-style view of **every file the whole run touched** — across the orchestrator and all subagents — with `+/−` counts and one-click diffs of exactly what changed.
+One combined, PR-style view of **every file the whole run touched** — across the main agent and all subagents — with `+/−` counts and one-click diffs of exactly what changed.
 
-<!-- <img src="https://github.com/dammyboss/claude-agent-manager/raw/HEAD/media/screenshot-changes.png" width="820" alt="Session changes" /> -->
-
-### 📖 Readable conversations (not raw JSON)
-Open any agent's conversation as a **clean, formatted Markdown view** — prompts, replies, and tool calls — instead of squinting at raw `.jsonl`.
+### 📖 Readable conversations (not raw JSONL)
+Open any agent's conversation as a **clean, formatted Markdown view** — prompts, replies, and tool calls — instead of squinting at `events.jsonl`.
 
 ### 🖥️ Sidebar *or* full-screen editor
 Live in the activity bar, or pop the whole dashboard out into a **full-screen editor tab** — both stay in sync.
@@ -77,86 +61,95 @@ A glanceable status-bar chip (`✦ 2 running · 1.2M tok`) even when the panel i
 
 ## 🚀 Getting started
 
-1. **Install** Claude Agent Manager from the Marketplace (or `code --install-extension claude-agent-manager-x.y.z.vsix`).
-2. Click the **Claude Agent Manager** icon in the activity bar.
-3. Run Claude Code as usual — ideally a task that spawns subagents — and watch it light up. ✨
+1. **Install** Copilot Agent Manager from the Marketplace (or `code --install-extension copilot-agent-manager-x.y.z.vsix`).
+2. Click the **Copilot Agent Manager** icon in the activity bar.
+3. Run Copilot as usual — agent mode in VS Code or the Copilot CLI, ideally a task that spawns subagents — and watch it light up. ✨
 
-> 🔎 **Seeing nothing?** First open is scoped to your current workspace. Click the **scope toggle** in the header (or run **“Claude Agents: Toggle Scope”**) to show **all projects**.
+> 🔎 **Seeing nothing?** First open is scoped to your current workspace. Click the **scope toggle** in the header (or run **“Copilot Agents: Toggle Scope”**) to show **all projects**.
 
-No setup, no API keys, no sign-in. It reads the transcripts Claude Code already writes under `~/.claude/projects`.
+No setup, no API keys, no sign-in. It reads the session events Copilot already writes under `~/.copilot/session-state`, plus VS Code's own chat store (turn that off with `includeChatStore`).
 
 ---
 
 ## ⚙️ Settings
 
-All under `claudeAgentManager.*`:
+All under `copilotAgentManager.*`:
 
 | Setting | Default | Description |
 | --- | --- | --- |
+| `copilotHome` | `""` | Override the Copilot home dir (else `COPILOT_HOME` → `~/.copilot`). |
 | `scope` | `workspace` | Monitor the current folder only, or **all** projects. |
+| `includeChatStore` | `true` | Also read VS Code's Copilot Chat store (`session-store.db`). |
 | `defaultLayout` | `tree` | `tree` · `cards` · `split`. |
-| `continueIn` | `extension` | Where **Continue** opens: Claude Code **editor** or a **terminal**. |
 | `accent` | `clay` | Accent color (`clay` or `blue`). |
 | `notifyOnFinish` | `true` | Toast when an agent finishes or errors. |
-| `activeThresholdSeconds` | `45` | A transcript touched within this window counts as *running*. |
+| `activeThresholdSeconds` | `45` | Session events touched within this window count as *running*. |
 | `maxSessions` | `6` | Most recent sessions to monitor. |
-| `maxSubagents` | `16` | Most recent subagents shown per session. |
 | `maxLogLines` | `200` | Log lines kept per agent. |
 | `pollSeconds` | `4` | File-watch fallback poll interval. |
-| `claudeHome` | `""` | Override the Claude home dir (else `CLAUDE_CONFIG_DIR` → `~/.claude`). |
 
 ---
 
 ## 🛡️ Private & safe by design
 
-- **Read-only.** It observes the transcripts Claude Code already writes — it never sends input to, pauses, or interferes with your agents.
+- **Read-only.** It observes the session events Copilot already writes and opens VS Code's chat database read-only — it never sends input to, pauses, or interferes with your agents.
 - **100% local.** No network calls, no telemetry, no accounts. Your conversations never leave your machine.
-- **Fast on huge runs.** Multi-megabyte transcripts are tail-read incrementally, never loaded whole in the hot path.
+- **Fast on huge runs.** Multi-megabyte session files are tail-read incrementally, never loaded whole in the hot path.
 
 <details>
 <summary><b>How it works</b></summary>
 
 ```
-~/.claude/projects/<project>/
-  <sessionId>.jsonl            ← main session (the orchestrator agent)
-  <sessionId>/subagents/
-    agent-<id>.jsonl           ← one transcript per subagent
-    agent-<id>.meta.json       ← { agentType, description }
+~/.copilot/session-state/<sessionId>/
+  events.jsonl       ← every session event: prompts, messages, tool calls, subagents
+  workspace.yaml     ← cwd, git branch, session name
+  session.db         ← todos / inbox
 ```
 
-The extension scans these, watches them for changes, folds the records into a live agent model, and renders it. Status and progress are *derived* from the transcripts (Claude Code has no status field), so they're heuristic and tunable via settings.
+Each `events.jsonl` line is one event. The interesting ones:
+
+| Event | Meaning |
+| --- | --- |
+| `session.start` · `user.message` · `assistant.message` | conversation turns |
+| `tool.execution_start` / `tool.execution_complete` | a tool call and its result |
+| `subagent.started` / `subagent.completed` | a subagent being spawned and finishing |
+| `session.usage_record` | tokens per model call |
+| `session.task_complete` · `session.error` | how the run ended |
+
+Tool events produced by a subagent carry an `agentId`, and `subagent.started` is itself spawned by a `task` tool call — so the extension rebuilds a real parent/child tree instead of guessing. Status and progress are *derived* from events (Copilot writes no status field), so they are heuristic and tunable via settings.
+
+Editor chat sessions are stored separately, by VS Code:
+
+```
+…/User/globalStorage/github.copilot-chat/session-store.db
+  sessions       ← id, cwd, repository, branch, summary, agent name, timestamps
+  turns          ← one row per exchange (user message + assistant response)
+  session_files  ← files the session touched, with the tool that touched them
+```
+
+That file is read without any native dependency: a small read-only SQLite reader parses the database format itself and replays committed `-wal` frames, so a chat that just finished shows up immediately. It is located from the running VS Code's own storage path, so a custom `--user-data-dir` or a portable install resolves correctly. Those rows carry no tool calls or subagent events, so each appears as a single agent for the session; sessions whose turns have no text at all are hidden.
 </details>
-
----
-
-## 🗺️ Roadmap
-
-- 💵 Cost in **$** (token usage × model pricing, per agent / session / day)
-- 📊 Usage analytics (per-tool breakdown, context-window %, cache-hit rate)
-- 🕓 Session history & trends
-
-Ideas or bugs? [Open an issue](https://github.com/dammyboss/claude-agent-manager/issues).
 
 ---
 
 ## ❓ FAQ
 
-**Does it work without any setup?** Yes — if you use Claude Code, it just works.
+**Does it work without any setup?** Yes — if Copilot writes sessions to `~/.copilot/session-state`, it just works.
 
-**Can it control or stop my agents?** No, by design. Claude Code exposes no external control API, so this is a safe, read-only monitor. **Continue** launches a fresh resume via the CLI/extension; it never injects into a live run.
+**Which Copilot surfaces are covered?** Copilot CLI and VS Code's Copilot CLI runtime (full events, subagents, diffs, resume), plus VS Code's own Copilot Chat store for editor sessions (turns only, no tool stream). Set `copilotAgentManager.includeChatStore` to `false` to ignore the database.
+
+**Can it control or stop my agents?** No, by design. It is a read-only monitor; **Continue** launches a fresh resume via `copilot --resume`, it never injects into a live run.
 
 **Does it send my data anywhere?** Never. Everything stays on your machine.
-
-**“Continue → Claude Code (editor)” isn't resuming?** It uses the official Claude Code extension; if that isn't installed, Continue falls back to a terminal automatically.
 
 ---
 
 ## 📄 License
 
-[MIT](https://github.com/dammyboss/claude-agent-manager/blob/HEAD/LICENSE) © Damilola Onadeinde
+[MIT](LICENSE) © Damilola Onadeinde
 
 <div align="center">
 
-**If Claude Agent Manager makes your agent runs clearer, please ⭐ the repo and leave a Marketplace review!**
+**If Copilot Agent Manager makes your agent runs clearer, please ⭐ the repo and leave a Marketplace review!**
 
 </div>

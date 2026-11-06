@@ -3,6 +3,7 @@ import { runAction } from "../api";
 
 /** Files touched by a single agent. */
 export function FileList({ a }: { a: Agent }) {
+  const references = a.source === "chat-store";
   if (a.files.length === 0) {
     return (
       <div
@@ -13,7 +14,7 @@ export function FileList({ a }: { a: Agent }) {
           padding: "24px 10px",
         }}
       >
-        No files changed yet.
+        {references ? "No files referenced yet." : "No files changed yet."}
       </div>
     );
   }
@@ -35,6 +36,7 @@ export function FileList({ a }: { a: Agent }) {
           <span style={{ color: "#4ec9b0", fontSize: 12 }}>◧</span>
           <span
             class="mono"
+            title={file.toolName ? `${file.path} · ${file.toolName}` : file.path}
             style={{
               flex: 1,
               minWidth: 0,
@@ -47,25 +49,29 @@ export function FileList({ a }: { a: Agent }) {
           >
             {file.path}
           </span>
-          <span class="mono" style={{ fontSize: 10.5, color: "#89d185" }}>
-            +{file.add}
-          </span>
-          <span class="mono" style={{ fontSize: 10.5, color: "#f48771" }}>
-            −{file.del}
-          </span>
-          <button
-            class="iconbtn"
-            title="Open diff"
-            onClick={() =>
-              runAction("openDiff", {
-                transcriptPath: a.transcriptPath,
-                file: file.path,
-                cwd: a.cwd,
-              })
-            }
-          >
-            ⇄
-          </button>
+          {references ? null : (
+            <>
+              <span class="mono" style={{ fontSize: 10.5, color: "#89d185" }}>
+                +{file.add}
+              </span>
+              <span class="mono" style={{ fontSize: 10.5, color: "#f48771" }}>
+                −{file.del}
+              </span>
+              <button
+                class="iconbtn"
+                title="Open diff"
+                onClick={() =>
+                  runAction("openDiff", {
+                    transcriptPath: a.transcriptPath,
+                    file: file.path,
+                    cwd: a.cwd,
+                  })
+                }
+              >
+                ⇄
+              </button>
+            </>
+          )}
           <button
             class="iconbtn"
             title="Open file"

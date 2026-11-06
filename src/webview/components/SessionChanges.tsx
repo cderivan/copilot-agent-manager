@@ -18,6 +18,7 @@ export function SessionChanges({
   if (!session || session.files.length === 0) {
     return null;
   }
+  const references = session.source === "chat-store";
   const added = session.files.reduce((total, file) => total + file.add, 0);
   const removed = session.files.reduce((total, file) => total + file.del, 0);
 
@@ -40,14 +41,20 @@ export function SessionChanges({
       >
         <span style={{ color: "#4ec9b0" }}>◧</span>
         <span style={{ flex: 1, textAlign: "left", fontSize: 12 }}>
-          {session.files.length} files changed this session
+          {references
+            ? `${session.files.length} file${session.files.length === 1 ? "" : "s"} referenced this session`
+            : `${session.files.length} files changed this session`}
         </span>
-        <span class="mono" style={{ fontSize: 11, color: "#89d185" }}>
-          +{added}
-        </span>
-        <span class="mono" style={{ fontSize: 11, color: "#f48771" }}>
-          −{removed}
-        </span>
+        {references ? null : (
+          <>
+            <span class="mono" style={{ fontSize: 11, color: "#89d185" }}>
+              +{added}
+            </span>
+            <span class="mono" style={{ fontSize: 11, color: "#f48771" }}>
+              −{removed}
+            </span>
+          </>
+        )}
         <span style={{ color: "#7a7a7a" }}>{open ? "▾" : "▸"}</span>
       </button>
       {open && (
@@ -77,7 +84,7 @@ export function SessionChanges({
               <span style={{ color: "#4ec9b0", fontSize: 12 }}>◧</span>
               <span
                 class="mono"
-                title={file.path}
+                title={file.toolName ? `${file.path} · ${file.toolName}` : file.path}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -100,25 +107,29 @@ export function SessionChanges({
                   {file.agentCount}×
                 </span>
               )}
-              <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#89d185" }}>
-                +{file.add}
-              </span>
-              <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#f48771" }}>
-                −{file.del}
-              </span>
-              <button
-                class="iconbtn"
-                title="Open diff"
-                onClick={() =>
-                  runAction("openDiff", {
-                    transcriptPath: file.transcriptPath,
-                    file: file.path,
-                    cwd: file.cwd,
-                  })
-                }
-              >
-                ⇄
-              </button>
+              {references ? null : (
+                <>
+                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#89d185" }}>
+                    +{file.add}
+                  </span>
+                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#f48771" }}>
+                    −{file.del}
+                  </span>
+                  <button
+                    class="iconbtn"
+                    title="Open diff"
+                    onClick={() =>
+                      runAction("openDiff", {
+                        transcriptPath: file.transcriptPath,
+                        file: file.path,
+                        cwd: file.cwd,
+                      })
+                    }
+                  >
+                    ⇄
+                  </button>
+                </>
+              )}
               <button
                 class="iconbtn"
                 title="Open file"

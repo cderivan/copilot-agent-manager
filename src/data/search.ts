@@ -2,10 +2,10 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import type { SearchResult } from "../types";
-import { isDirectory, projectsDir, workspaceProjectKeys } from "./paths";
-
-const UUID_PATTERN = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+import type { ChatSessionRecord } from "./chatStore";
+import type { CopilotEvent, SearchResult } from "../types";
+import { readSessionMeta } from "./discovery";
+import { inWorkspace, isDirectory, sessionsDir } from "./paths";
 
 /** Prefer the ripgrep binary VS Code ships; fall back to one on PATH. */
 function resolveRipgrepPath(): string {
@@ -26,114 +26,45 @@ function resolveRipgrepPath(): string {
   return binary;
 }
 
-function searchRoots(allProjects: boolean): string[] {
-  const root = projectsDir();
-  if (!isDirectory(root)) {
-    return [];
-  }
-  if (allProjects) {
-    return [root];
-  }
-  const folders = workspaceProjectKeys()
-    .map((key) => path.join(root, key))
-    .filter(isDirectory);
-  if (folders.length) {
-    return folders;
-  }
-  return [root];
-}
-
-function readHead(filePath: string, maxBytes = 8192): string {
+function parseLine(rawLine: string): CopilotEvent | null {
   try {
-    const fd = fs.openSync(filePath, "r");
-    const length = Math.min(maxBytes, fs.fstatSync(fd).size);
-    const buffer = Buffer.alloc(length);
-    fs.readSync(fd, buffer, 0, length, 0);
-    fs.closeSync(fd);
-    return buffer.toString("utf8");
+    const parsed = JSON.parse(rawLine);
+    return parsed && typeof parsed === "object" ? (parsed as CopilotEvent) : null;
   } catch {
-    return "";
+    return null;
   }
 }
 
-function firstCwd(transcriptPath: string): string {
-  const line = readHead(transcriptPath)
-    .split("\n")
-    .find((candidate) => candidate.trim());
-  if (!line) {
-    return "";
+/** Text carried by one event line: prompts, replies, tool arguments. */
+function eventText(event: CopilotEvent): string {
+  const data = event.data && typeof event.data === "object" ? event.data : {};
+  if (typeof data.content === "string") {
+    return data.content;
   }
-  try {
-    return String(JSON.parse(line).cwd || "");
-  } catch {
-    return "";
+  if (Array.isArray(data.toolRequests)) {
+    return (data.toolRequests as Array<Record<string, any>>)
+      .map((request) => {
+        const args = request.arguments || {};
+        return `${request.name || ""} ${args.command || args.path || args.pattern || args.query || ""}`;
+      })
+      .join(" ");
   }
-}
-
-function subagentDisplayName(transcriptPath: string): string {
-  try {
-    const meta = JSON.parse(
-      fs.readFileSync(transcriptPath.replace(/\.jsonl$/, ".meta.json"), "utf8")
-    );
-    return String(meta.description || meta.agentType || "subagent").slice(0, 52);
-  } catch {
-    return "subagent";
-  }
-}
-
-function blockText(block: any): string {
-  if (typeof block === "string") {
-    return block;
-  }
-  if (!block || typeof block !== "object") {
-    return "";
-  }
-  if (block.type === "text") {
-    return block.text || "";
-  }
-  if (block.type === "thinking") {
-    return block.thinking || block.text || "";
-  }
-  if (block.type === "tool_use") {
-    const input = block.input || {};
-    return `${block.name || ""} ${
-      input.command || input.file_path || input.description || input.pattern || input.query || ""
-    }`;
-  }
-  if (block.type === "tool_result") {
-    const content = block.content;
-    if (typeof content === "string") {
-      return content;
+  const args = data.arguments;
+  if (args && typeof args === "object") {
+    for (const key of ["command", "path", "pattern", "query", "url", "description", "prompt"]) {
+      const value = (args as Record<string, unknown>)[key];
+      if (typeof value === "string" && value.trim()) {
+        return value;
+      }
     }
-    if (Array.isArray(content)) {
-      return content
-        .map((item) => {
-          if (typeof item === "string") {
-            return item;
-          }
-          return item?.text || "";
-        })
-        .join(" ");
-    }
-    return "";
   }
-  return block.text || "";
+  return "";
 }
 
 /** Snippet around the first query hit, falling back to the raw matched line. */
 function buildSnippet(rawLine: string, query: string): string {
-  let text = "";
-  try {
-    const content = JSON.parse(rawLine)?.message?.content;
-    if (typeof content === "string") {
-      text = content;
-    } else if (Array.isArray(content)) {
-      text = content.map(blockText).join(" ");
-    }
-  } catch {
-    // Fall back to the raw line below.
-  }
-  text = text.replace(/\s+/g, " ").trim();
+  const event = parseLine(rawLine);
+  const text = event ? eventText(event).replace(/\s+/g, " ").trim() : "";
   const needle = query.toLowerCase();
   const source =
     text && text.toLowerCase().indexOf(needle) >= 0 ? text : rawLine.replace(/\s+/g, " ").trim();
@@ -158,22 +89,25 @@ function buildHit(
   } catch {
     // Leave 0 when the file vanished.
   }
-  const isSubagent = /\/subagents\/agent-[^/]+\.jsonl$/.test(transcriptPath);
-  const sessionId =
-    (transcriptPath.match(UUID_PATTERN) || [])[1] ||
-    path.basename(transcriptPath).replace(/\.jsonl$/, "");
-  const cwd = firstCwd(transcriptPath);
-  const projectName = cwd ? path.basename(cwd) : path.basename(path.dirname(transcriptPath));
-  const agentName = isSubagent ? subagentDisplayName(transcriptPath) : projectName || sessionId.slice(0, 8);
+  const event = parseLine(firstLine);
+  const agentId = typeof event?.agentId === "string" ? event.agentId : "";
+  const dir = path.dirname(transcriptPath);
+  const meta = readSessionMeta(dir);
+  const sessionId = path.basename(dir);
+  const projectName = meta.cwd
+    ? path.basename(meta.cwd)
+    : meta.name || sessionId.slice(0, 8);
 
   return {
     sessionId,
     transcriptPath,
-    agentName,
-    isSubagent,
+    agentName: agentId ? `subagent ${agentId.slice(0, 6)}` : projectName,
+    isSubagent: !!agentId,
+    source: "events",
+    resumable: true,
     agentMatches: 1,
     projectName,
-    cwd,
+    cwd: meta.cwd,
     snippet: buildSnippet(firstLine, query),
     matchCount,
     mtimeMs,
@@ -185,22 +119,97 @@ interface RawMatch {
   firstLine: string;
 }
 
-/** Full-text search over every transcript with ripgrep, grouped per session. */
+function chatSnippet(text: string, hit: number, length: number): string {
+  const start = Math.max(0, hit - 70);
+  const end = Math.min(text.length, hit + length + 90);
+  return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+}
+
+/** In-memory search over VS Code chat sessions (they are rows, not files). */
+function chatResults(
+  needle: string,
+  sessions: ChatSessionRecord[],
+  dbPath: string,
+  allProjects: boolean
+): SearchResult[] {
+  if (!dbPath || sessions.length === 0) {
+    return [];
+  }
+  const query = needle.toLowerCase();
+  const results: SearchResult[] = [];
+
+  for (const session of sessions) {
+    if (!allProjects && !inWorkspace(session.cwd)) {
+      continue;
+    }
+    let matchCount = 0;
+    let snippet = "";
+    const texts: string[] = [];
+    if (session.summary) {
+      texts.push(session.summary);
+    }
+    for (const turn of session.turns) {
+      if (turn.userMessage) {
+        texts.push(turn.userMessage);
+      }
+      if (turn.assistantResponse) {
+        texts.push(turn.assistantResponse);
+      }
+    }
+    for (const text of texts) {
+      const clean = text.replace(/\s+/g, " ").trim();
+      const lower = clean.toLowerCase();
+      let hit = lower.indexOf(query);
+      while (hit >= 0) {
+        matchCount++;
+        if (!snippet) {
+          snippet = chatSnippet(clean, hit, query.length);
+        }
+        hit = lower.indexOf(query, hit + query.length);
+      }
+    }
+    if (!matchCount) {
+      continue;
+    }
+    const projectName = session.cwd
+      ? path.basename(session.cwd)
+      : session.agentName || session.id.slice(0, 8);
+    results.push({
+      sessionId: session.id,
+      transcriptPath: dbPath,
+      agentName: session.agentName || projectName,
+      isSubagent: false,
+      source: "chat-store",
+      resumable: false,
+      agentMatches: 1,
+      projectName,
+      cwd: session.cwd,
+      snippet,
+      matchCount,
+      mtimeMs: Date.parse(session.updatedAt) || 0,
+    });
+  }
+  return results;
+}
+
+/** Full-text search over every Copilot session's events, grouped per session. */
 export async function searchTranscripts(
   query: string,
-  allProjects: boolean
+  allProjects: boolean,
+  chatSessions: ChatSessionRecord[] = [],
+  chatDbPath = ""
 ): Promise<SearchResult[]> {
   const needle = (query || "").trim();
   if (needle.length < 2) {
     return [];
   }
-  const roots = searchRoots(allProjects);
-  if (roots.length === 0) {
+  const root = sessionsDir();
+  if (!isDirectory(root)) {
     return [];
   }
 
   const rgPath = resolveRipgrepPath();
-  const args = ["--json", "-i", "-F", "-m", "3", "--glob", "*.jsonl", "-e", needle, ...roots];
+  const args = ["--json", "-i", "-F", "-m", "3", "--glob", "events.jsonl", "-e", needle, root];
   const matches = new Map<string, RawMatch>();
 
   await new Promise<void>((resolve) => {
@@ -301,7 +310,20 @@ export async function searchTranscripts(
     }
   }
 
-  const results = [...grouped.values()].map((group) => group.primary);
+  let results = [...grouped.values()].map((group) => group.primary);
+  const seenSessions = new Set(results.map((result) => result.sessionId));
+  for (const extra of chatResults(needle, chatSessions, chatDbPath, allProjects)) {
+    if (!seenSessions.has(extra.sessionId)) {
+      results.push(extra);
+      seenSessions.add(extra.sessionId);
+    }
+  }
+  if (!allProjects) {
+    const scoped = results.filter((result) => inWorkspace(result.cwd));
+    if (scoped.length) {
+      results = scoped;
+    }
+  }
   results.sort((a, b) => b.matchCount - a.matchCount || b.mtimeMs - a.mtimeMs);
   return results.slice(0, 30);
 }

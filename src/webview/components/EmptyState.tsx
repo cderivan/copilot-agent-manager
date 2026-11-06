@@ -15,7 +15,7 @@ export function EmptyState({ state }: { state: AppState }) {
         textAlign: "center",
       }}
     >
-      <div style={{ fontSize: 30, color: "#d97757", opacity: 0.5 }}>✳</div>
+      <div style={{ fontSize: 30, color: "#4daafc", opacity: 0.5 }}>✦</div>
       <div style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 260 }}>
         {state.emptyReason || "No matching agents."}
       </div>

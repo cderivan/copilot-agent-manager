@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
-const BEFORE_SCHEME = "claude-agent-before";
-const AFTER_SCHEME = "claude-agent-after";
+const BEFORE_SCHEME = "copilot-agent-before";
+const AFTER_SCHEME = "copilot-agent-after";
 
 class TextContentStore implements vscode.TextDocumentContentProvider {
   private readonly store = new Map<string, string>();

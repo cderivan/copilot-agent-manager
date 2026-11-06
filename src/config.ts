@@ -1,18 +1,18 @@
 import * as vscode from "vscode";
 import type { BuildConfig, ScanConfig } from "./types";
 
-const SECTION = "claudeAgentManager";
+const SECTION = "copilotAgentManager";
 
 export function readScanConfig(): ScanConfig {
   const config = vscode.workspace.getConfiguration(SECTION);
   return {
     scope: config.get<ScanConfig["scope"]>("scope", "workspace"),
     maxSessions: config.get("maxSessions", 6),
-    maxSubagents: config.get("maxSubagents", 16),
+    includeChatStore: config.get("includeChatStore", true),
   };
 }
 
-export function readBuildConfig(claudeHome: string): BuildConfig {
+export function readBuildConfig(copilotHome: string): BuildConfig {
   const config = vscode.workspace.getConfiguration(SECTION);
   return {
     scope: config.get<BuildConfig["scope"]>("scope", "workspace"),
@@ -20,8 +20,7 @@ export function readBuildConfig(claudeHome: string): BuildConfig {
     layout: config.get<BuildConfig["layout"]>("defaultLayout", "tree"),
     activeThresholdSeconds: config.get("activeThresholdSeconds", 45),
     maxLogLines: config.get("maxLogLines", 200),
-    continueIn: config.get<BuildConfig["continueIn"]>("continueIn", "extension"),
-    claudeHome,
+    copilotHome,
   };
 }
 

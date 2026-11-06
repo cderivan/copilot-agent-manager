@@ -150,7 +150,7 @@ export function AgentCards({
                   <LogTail lines={agent.logTail} max={5} />
                 </div>
                 <div style={{ borderTop: "1px solid #3a3a3b", padding: "7px 10px" }}>
-                  <ContinueBar t={agent} continueIn={state.continueIn} />
+                  <ContinueBar t={agent} />
                 </div>
               </div>
             )}

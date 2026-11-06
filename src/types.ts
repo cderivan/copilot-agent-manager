@@ -6,38 +6,18 @@ export type LayoutName = "tree" | "cards" | "split";
 
 export type ScopeName = "workspace" | "all";
 
-export type ContinueTarget = "extension" | "terminal";
+/** Where a session was read from: Copilot CLI events or VS Code's chat store. */
+export type AgentSource = "events" | "chat-store";
 
-export interface Usage {
-  input_tokens?: number;
-  output_tokens?: number;
-  cache_creation_input_tokens?: number;
-  cache_read_input_tokens?: number;
-}
-
-export interface ContentBlock {
+/** One line of a Copilot CLI session's `events.jsonl`. */
+export interface CopilotEvent {
   type?: string;
-  text?: string;
-  thinking?: string;
-  name?: string;
-  input?: Record<string, any>;
-  content?: unknown;
-  is_error?: boolean;
-  [key: string]: unknown;
-}
-
-export interface TranscriptMessage {
-  role?: string;
-  model?: string;
-  content?: string | ContentBlock[];
-  usage?: Usage;
-}
-
-export interface TranscriptRecord {
-  type?: string;
+  id?: string;
   timestamp?: string;
-  cwd?: string;
-  message?: TranscriptMessage;
+  parentId?: string | null;
+  /** Set on events produced by a subagent; empty for the main agent. */
+  agentId?: string | null;
+  data?: Record<string, any>;
   [key: string]: unknown;
 }
 
@@ -54,11 +34,18 @@ export interface FileChange {
   path: string;
   add: number;
   del: number;
+  /** Tool that touched the file, when the source records one. */
+  toolName?: string;
 }
 
 export interface Agent {
   id: string;
   sessionId: string;
+  /** Copilot subagent id, or "" for the main/orchestrator agent. */
+  eventAgentId: string;
+  source: AgentSource;
+  /** True when the session can be reopened with `copilot --resume`. */
+  resumable: boolean;
   name: string;
   agentType: string;
   task: string;
@@ -88,6 +75,7 @@ export interface SessionFileChange extends FileChange {
 
 export interface SessionSummary {
   id: string;
+  source: AgentSource;
   title: string;
   cwd: string;
   gitBranch: string;
@@ -118,6 +106,8 @@ export interface SearchResult {
   transcriptPath: string;
   agentName: string;
   isSubagent: boolean;
+  source: AgentSource;
+  resumable: boolean;
   agentMatches: number;
   projectName: string;
   cwd: string;
@@ -133,27 +123,25 @@ export interface BuildConfig {
   layout: LayoutName;
   activeThresholdSeconds: number;
   maxLogLines: number;
-  continueIn: ContinueTarget;
-  claudeHome: string;
+  copilotHome: string;
 }
 
 /** Settings the project scanner needs. */
 export interface ScanConfig {
   scope: ScopeName;
   maxSessions: number;
-  maxSubagents: number;
+  includeChatStore: boolean;
 }
 
 export interface AppState {
   scope: ScopeName;
   accent: AccentName;
   layout: LayoutName;
-  continueIn: ContinueTarget;
   sessions: SessionSummary[];
   agents: Agent[];
   selectedId: string | null;
   generatedAt: string;
-  claudeHome: string;
+  copilotHome: string;
   empty: boolean;
   emptyReason?: string;
 }

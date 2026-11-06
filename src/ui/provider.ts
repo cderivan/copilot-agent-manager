@@ -3,7 +3,7 @@ import type { AgentMonitor } from "../state/monitor";
 import { wireWebview } from "./panel";
 
 export class AgentManagerViewProvider implements vscode.WebviewViewProvider {
-  static readonly viewId = "claudeAgentManager.view";
+  static readonly viewId = "copilotAgentManager.view";
 
   constructor(
     private readonly context: vscode.ExtensionContext,
