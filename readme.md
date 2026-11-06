@@ -4,7 +4,7 @@
 
 # Copilot Agent Manager
 
-### See exactly what your Copilot agents — and every subagent they spawn — are doing, **live**, without leaving VS Code.
+### See exactly what your Copilot agents — and every subagent they spawn — are doing, **live**, without leaving VS Code
 
 **100% local · read-only · zero config**
 
@@ -28,33 +28,43 @@
 ## ✨ Features
 
 ### 🌳 Live agent & subagent tree
+
 Your whole run, structured. The main agent with the subagents it spawned nested underneath — names and tasks pulled straight from Copilot's `subagent.started` events. Spinners for running, badges for `done` / `error` / `waiting`, token counts, and progress only when Copilot actually reports todos (never a fake bar).
 
 ### ⚡ "Right now" — the current tool call
+
 For every running agent, see the exact tool in flight (`edit src/auth/session.ts`, `bash npm test`, `grep …`) plus a **live streaming activity log** that updates as it works.
 
 ### 💬 VS Code chat sessions, too
+
 Editor chats live in VS Code's own Copilot store (`session-store.db`), not in the CLI session tree. Copilot Agent Manager reads that SQLite store directly — recent turns included, even while they still only exist in its write-ahead log — and lists those sessions next to CLI ones. They expose their turns and the **files they referenced** (`session_files`), but no tool stream and no subagents, so **Continue** stays hidden for them.
 
 ### 🔍 Search every session (full-text)
+
 Hit the **search** icon and type a keyword. The extension scans the full text of **every Copilot session's events** with ripgrep — sub-second — and returns matching sessions (subagent hits folded in), each with a highlighted snippet. Then **Continue** or **Read** it in one click.
 
 ### ▶️ Continue any session
+
 Pick up right where a session left off: **Continue** opens a terminal in the session's project and runs `copilot --resume=<session-id>`.
 
 ### 📂 Session-wide changes
+
 One combined, PR-style view of **every file the whole run touched** — across the main agent and all subagents — with `+/−` counts and one-click diffs of exactly what changed.
 
 ### 📖 Readable conversations (not raw JSONL)
+
 Open any agent's conversation as a **clean, formatted Markdown view** — prompts, replies, and tool calls — instead of squinting at `events.jsonl`.
 
 ### 🖥️ Sidebar *or* full-screen editor
+
 Live in the activity bar, or pop the whole dashboard out into a **full-screen editor tab** — both stay in sync.
 
 ### 🎛️ Three layouts, one click
+
 Switch between **Tree** (hierarchy + inline detail), **Cards** (one live card per agent), and **Split** (master list + Activity / Files / Conversation tabs).
 
 ### 🔔 Status bar + finish notifications
+
 A glanceable status-bar chip (`✦ 2 running · 1.2M tok`) even when the panel is closed, plus a toast when an agent **finishes** or **errors**.
 
 ---
