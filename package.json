@@ -1,0 +1,195 @@
+{
+  "name": "claude-agent-manager",
+  "displayName": "Claude Agent Manager",
+  "description": "Live, read-only monitor for your Claude Code agents and subagents — tree, activity, tokens, diffs, and full-text conversation search in a VS Code sidebar.",
+  "version": "0.1.3",
+  "publisher": "Damilola",
+  "author": "Damilola Onadeinde",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dammyboss/claude-agent-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/dammyboss/claude-agent-manager/issues"
+  },
+  "homepage": "https://github.com/dammyboss/claude-agent-manager#readme",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "AI",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "anthropic",
+    "agents",
+    "subagents",
+    "agent monitor",
+    "agent dashboard",
+    "ai",
+    "sessions",
+    "observability",
+    "productivity"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudeAgentManager",
+          "title": "Claude Agent Manager",
+          "icon": "media/agent.svg"
+        }
+      ]
+    },
+    "views": {
+      "claudeAgentManager": [
+        {
+          "type": "webview",
+          "id": "claudeAgentManager.view",
+          "name": "Agents"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "claudeAgentManager.refresh",
+        "title": "Claude Agents: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "claudeAgentManager.openInEditor",
+        "title": "Claude Agents: Open in Editor (full screen)",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "claudeAgentManager.toggleScope",
+        "title": "Claude Agents: Toggle Scope (Workspace / All Projects)"
+      },
+      {
+        "command": "claudeAgentManager.cycleLayout",
+        "title": "Claude Agents: Cycle Layout (Tree / Cards / Split)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "claudeAgentManager.openInEditor",
+          "when": "view == claudeAgentManager.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeAgentManager.refresh",
+          "when": "view == claudeAgentManager.view",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Agent Manager",
+      "properties": {
+        "claudeAgentManager.claudeHome": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to your Claude home directory. Leave empty to use `CLAUDE_CONFIG_DIR` or `~/.claude`."
+        },
+        "claudeAgentManager.scope": {
+          "type": "string",
+          "enum": [
+            "workspace",
+            "all"
+          ],
+          "default": "workspace",
+          "description": "Show sessions for the current workspace folder only, or across all projects."
+        },
+        "claudeAgentManager.defaultLayout": {
+          "type": "string",
+          "enum": [
+            "tree",
+            "cards",
+            "split"
+          ],
+          "default": "tree",
+          "description": "Which of the three layouts to show by default."
+        },
+        "claudeAgentManager.accent": {
+          "type": "string",
+          "enum": [
+            "clay",
+            "blue"
+          ],
+          "default": "clay",
+          "description": "Accent color."
+        },
+        "claudeAgentManager.activeThresholdSeconds": {
+          "type": "number",
+          "default": 45,
+          "description": "An agent whose transcript was modified within this many seconds is considered running."
+        },
+        "claudeAgentManager.maxSessions": {
+          "type": "number",
+          "default": 6,
+          "description": "Maximum number of recent sessions to monitor at once."
+        },
+        "claudeAgentManager.maxSubagents": {
+          "type": "number",
+          "default": 16,
+          "description": "Maximum number of recent subagents to show per session."
+        },
+        "claudeAgentManager.maxLogLines": {
+          "type": "number",
+          "default": 200,
+          "description": "Maximum number of log lines kept per agent in the live view."
+        },
+        "claudeAgentManager.pollSeconds": {
+          "type": "number",
+          "default": 4,
+          "description": "Fallback polling interval (seconds) used alongside the file watcher."
+        },
+        "claudeAgentManager.notifyOnFinish": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when a running agent finishes or errors."
+        },
+        "claudeAgentManager.continueIn": {
+          "type": "string",
+          "enum": [
+            "extension",
+            "terminal"
+          ],
+          "enumDescriptions": [
+            "Open the session in the Claude Code extension's editor view (resumes the exact session; falls back to terminal if the extension isn't installed).",
+            "Resume the session in an integrated terminal via `claude --resume <id>`."
+          ],
+          "default": "extension",
+          "description": "Where the 'Continue' action opens a session. You can also pick per-click from the Continue dropdown."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "vscode:prepublish": "node esbuild.js --production",
+    "package": "npx --yes @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.84.0",
+    "esbuild": "^0.21.5",
+    "preact": "^10.22.0",
+    "typescript": "^5.4.5"
+  }
+}
