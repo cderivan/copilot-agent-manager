@@ -176,7 +176,7 @@ function chatResults(
       : session.agentName || session.id.slice(0, 8);
     results.push({
       sessionId: session.id,
-      transcriptPath: dbPath,
+      transcriptPath: session.path || dbPath,
       agentName: session.agentName || projectName,
       isSubagent: false,
       source: "chat-store",

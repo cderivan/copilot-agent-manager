@@ -105,6 +105,8 @@ const CHAT_RECORD: ChatSessionRecord = {
   gitBranch: "main",
   summary: "Fix the chat",
   agentName: "GitHub Copilot Chat",
+  model: "copilot/gpt-5-mini",
+  tools: [{ name: "read", arg: "/work/chat/a.ts", turnIndex: 0 }],
   createdAt: "2026-11-06T10:00:00.000Z",
   updatedAt: "2026-11-06T10:05:00.000Z",
   turns: [
@@ -131,12 +133,67 @@ test("buildChatAgents exposes referenced files without line counts", () => {
   assert.equal(agent.resumable, false);
   assert.equal(agent.status, "done");
   assert.equal(agent.transcriptPath, "/tmp/session-store.db");
+  assert.equal(agent.model, "gpt-5-mini");
+  assert.equal(agent.toolCount, 1);
+  assert.equal(agent.lastToolTag, "read");
+  assert.equal(agent.lastToolArg, "/work/chat/a.ts");
+  assert.ok(agent.logTail.some((line) => line.tag === "read"));
   assert.deepEqual(
     agent.files.map((file) => [file.path, file.add, file.del, file.toolName]),
     [
       ["/work/chat/a.ts", 0, 0, "read_file"],
       ["/work/chat/b.ts", 0, 0, "edit"],
     ]
+  );
+});
+
+test("buildState interleaves CLI and chat sessions by recency", () => {
+  const olderDir = sessionDir([
+    {
+      type: "session.start",
+      data: { context: { cwd: "/work/old" } },
+      timestamp: "2026-11-06T09:00:00.000Z",
+    },
+    { type: "user.message", data: { content: "old work" }, timestamp: "2026-11-06T09:00:01.000Z" },
+  ]);
+  const newerDir = sessionDir([
+    {
+      type: "session.start",
+      data: { context: { cwd: "/work/new" } },
+      timestamp: "2026-11-06T11:00:00.000Z",
+    },
+    { type: "user.message", data: { content: "new work" }, timestamp: "2026-11-06T11:00:01.000Z" },
+  ]);
+  const older = {
+    ...entryFor(olderDir),
+    sessionId: "old",
+    mtimeMs: Date.parse("2026-11-06T09:00:05.000Z"),
+  };
+  const newer = {
+    ...entryFor(newerDir),
+    sessionId: "new",
+    mtimeMs: Date.parse("2026-11-06T11:00:05.000Z"),
+  };
+  const chat: ChatSessionRecord = {
+    ...CHAT_RECORD,
+    id: "chat",
+    updatedAt: "2026-11-06T10:00:00.000Z",
+  };
+
+  const state = buildState(
+    [older, newer],
+    { dbPath: "/tmp/session-store.db", records: [chat] },
+    null,
+    CFG,
+    Date.parse("2026-11-06T12:00:00.000Z")
+  );
+  assert.deepEqual(
+    state.sessions.map((session) => session.id),
+    ["new", "chat", "old"]
+  );
+  assert.deepEqual(
+    state.agents.map((agent) => agent.sessionId),
+    ["new", "chat", "old"]
   );
 });
 

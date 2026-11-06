@@ -4,7 +4,7 @@ export function Conversation({ messages }: { messages?: ConversationMessage[] })
   if (messages) {
     if (messages.length === 0) {
       return (
-        <div style={{ color: "#5a5a5a", fontSize: 12, padding: "20px 4px" }}>
+        <div style={{ color: "var(--cam-text-faint)", fontSize: 12, padding: "20px 4px" }}>
           No conversation text.
         </div>
       );
@@ -19,8 +19,11 @@ export function Conversation({ messages }: { messages?: ConversationMessage[] })
                 width: 20,
                 height: 20,
                 borderRadius: 5,
-                background: message.role === "user" ? "#3a3a3b" : "rgba(77,170,252,.2)",
-                color: message.role === "user" ? "#dcdcdc" : "#4daafc",
+                background:
+                  message.role === "user"
+                    ? "var(--cam-bg-active)"
+                    : "color-mix(in srgb, var(--cam-running) 20%, transparent)",
+                color: message.role === "user" ? "var(--cam-text)" : "var(--cam-running)",
                 fontSize: 10,
                 fontWeight: 700,
                 display: "flex",
@@ -34,13 +37,13 @@ export function Conversation({ messages }: { messages?: ConversationMessage[] })
               style={{
                 flex: 1,
                 minWidth: 0,
-                background: message.role === "user" ? "#252526" : "#1e1e1e",
-                border: "1px solid #2d2d2d",
+                background: message.role === "user" ? "var(--cam-bg-elevated)" : "var(--cam-bg)",
+                border: "1px solid var(--cam-border-soft)",
                 borderRadius: 7,
                 padding: "7px 10px",
                 fontSize: 11.5,
                 lineHeight: 1.5,
-                color: "#cfcfcf",
+                color: "var(--cam-text)",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
               }}
@@ -53,7 +56,7 @@ export function Conversation({ messages }: { messages?: ConversationMessage[] })
     );
   }
   return (
-    <div style={{ color: "#5a5a5a", fontSize: 12, padding: "20px 4px" }}>
+    <div style={{ color: "var(--cam-text-faint)", fontSize: 12, padding: "20px 4px" }}>
       Loading conversation…
     </div>
   );

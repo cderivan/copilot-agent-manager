@@ -55,6 +55,9 @@ export interface Agent {
   parentId: string | null;
   currentToolTag: string;
   currentToolArg: string;
+  /** Most recent tool call, when the source records a tool stream. */
+  lastToolTag?: string;
+  lastToolArg?: string;
   progress: number | null;
   toolCount: number;
   tokens: number;

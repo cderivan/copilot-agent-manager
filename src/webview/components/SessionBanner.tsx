@@ -1,5 +1,6 @@
 import type { Agent, AppState } from "../../types";
 import { formatTokens } from "../theme";
+import { SourceBadge } from "./primitives";
 
 export function SessionBanner({ state, selected }: { state: AppState; selected?: Agent }) {
   const session =
@@ -14,8 +15,8 @@ export function SessionBanner({ state, selected }: { state: AppState; selected?:
         flex: "none",
         margin: "0 12px 8px",
         padding: "9px 11px",
-        background: "#2d2d2e",
-        border: "1px solid #3a3a3b",
+        background: "var(--cam-bg-raised)",
+        border: "1px solid var(--cam-border)",
         borderRadius: 6,
         display: "flex",
         alignItems: "center",
@@ -27,8 +28,10 @@ export function SessionBanner({ state, selected }: { state: AppState; selected?:
         style={{
           width: 9,
           height: 9,
-          background: active ? "#4daafc" : "#7a7a7a",
-          boxShadow: active ? "0 0 0 3px rgba(77,170,252,.16)" : "none",
+          background: active ? "var(--cam-running)" : "var(--cam-text-dim)",
+          boxShadow: active
+            ? "0 0 0 3px color-mix(in srgb, var(--cam-running) 16%, transparent)"
+            : "none",
           animation: active ? "pulse 1.6s ease-in-out infinite" : "none",
         }}
       />
@@ -36,7 +39,7 @@ export function SessionBanner({ state, selected }: { state: AppState; selected?:
         <div
           style={{
             fontSize: 12.5,
-            color: "#e4e4e4",
+            color: "var(--cam-text-strong)",
             fontWeight: 600,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -45,10 +48,11 @@ export function SessionBanner({ state, selected }: { state: AppState; selected?:
         >
           {session.title}
         </div>
-        <div style={{ fontSize: 11, color: "#8a8a8a", marginTop: 1 }}>
+        <div style={{ fontSize: 11, color: "var(--cam-text-dim)", marginTop: 1 }}>
           {session.running} running · {session.done} done · {formatTokens(session.tokens)} tokens
         </div>
       </div>
+      <SourceBadge source={session.source} />
     </div>
   );
 }

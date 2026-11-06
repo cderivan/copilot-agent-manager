@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]*.[0-9]*.[0-9]*"]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag_name: ${{ github.ref_name }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG_NAME: ${{ github.ref_name }}
+    steps:
+      - name: Create draft release
+        run: |
+          set -euo pipefail
+          if [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo "::error::the GITHUB_TOKEN secret is not set"
+            exit 1
+          fi
+          command -v jq >/dev/null || { echo "::error::jq is required to read GitHub API responses"; exit 1; }
+          api_base="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          prerelease=false
+          case "$TAG_NAME" in *-*) prerelease=true ;; esac
+          payload=$(printf '{"tag_name":"%s","name":"%s","draft":true,"prerelease":%s}' \
+            "$TAG_NAME" "$TAG_NAME" "$prerelease")
+          code=$(curl -sS -o /tmp/release.json -w '%{http_code}' \
+            -X POST "$api_base/releases" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "$payload")
+          case "$code" in
+            201) echo "created draft release $TAG_NAME" ;;
+            # 422 already_exists (409 on some APIs): a rerun after a partial
+            # failure must not abort here.
+            409|422) echo "draft release $TAG_NAME already exists" ;;
+            *)
+              cat /tmp/release.json || true
+              echo "::error::creating the release failed with HTTP $code"
+              exit 1
+              ;;
+          esac
+
+  publish-vsix:
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG_NAME: ${{ needs.create-release.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.create-release.outputs.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Package VSIX
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          out="copilot-agent-manager-${version}.vsix"
+          # The extension is pure JavaScript, so one VSIX fits every platform.
+          npm run package -- --out "$out"
+          # Packaging must actually contain the built extension and webview.
+          # No `grep -q`: closing the pipe early makes unzip die on SIGPIPE,
+          # which `pipefail` turns into a failed step.
+          for entry in extension/out/extension.js extension/out/webview.js; do
+            unzip -l "$out" | grep -F "$entry" >/dev/null
+          done
+          ls -l "$out"
+      - name: Upload VSIX
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || { echo "::error::jq is required to read GitHub API responses"; exit 1; }
+          api() { curl -sS -H "Authorization: token $GITHUB_TOKEN" "$@"; }
+          api_base="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          release_id=$(api "$api_base/releases/tags/$TAG_NAME" | jq -r '.id')
+          if [ -z "$release_id" ] || [ "$release_id" = null ]; then
+            echo "::error::release $TAG_NAME not found on GitHub"
+            exit 1
+          fi
+          for file in *.vsix; do
+            name=${file##*/}
+            for asset_id in $(api "$api_base/releases/$release_id/assets" \
+                | jq -r --arg name "$name" '.[] | select(.name == $name) | .id'); do
+              api -X DELETE "$api_base/releases/$release_id/assets/$asset_id" >/dev/null
+            done
+            api --fail-with-body -X POST "$api_base/releases/$release_id/assets?name=$name" \
+              -H 'Content-Type: application/octet-stream' \
+              --data-binary @"$file" >/dev/null
+            echo "uploaded $name"
+          done
+
+  # Undraft the release after the artifact is uploaded.
+  publish-release:
+    needs: [create-release, publish-vsix]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG_NAME: ${{ needs.create-release.outputs.tag_name }}
+    steps:
+      - name: Publish the release
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || { echo "::error::jq is required to read GitHub API responses"; exit 1; }
+          api() { curl -sS -H "Authorization: token $GITHUB_TOKEN" "$@"; }
+          api_base="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          release_id=$(api "$api_base/releases/tags/$TAG_NAME" | jq -r '.id')
+          if [ -z "$release_id" ] || [ "$release_id" = null ]; then
+            echo "::error::release $TAG_NAME not found on GitHub"
+            exit 1
+          fi
+          api --fail-with-body -X PATCH "$api_base/releases/$release_id" \
+            -H 'Content-Type: application/json' \
+            -d '{"draft":false}' >/dev/null
+          echo "published $TAG_NAME"

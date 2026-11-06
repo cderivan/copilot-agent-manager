@@ -6,7 +6,7 @@ import { Conversation } from "./Conversation";
 import { ContinueBar } from "./ContinueBar";
 import { EmptyState } from "./EmptyState";
 import { FileList } from "./FileList";
-import { LogTail, StatusDot } from "./primitives";
+import { LogTail, SourceBadge, StatusDot } from "./primitives";
 
 type Tab = "activity" | "files" | "conv";
 
@@ -51,7 +51,9 @@ export function SplitView({
                 padding: `5px 8px 5px ${8 + agent.depth * 16}px`,
                 borderRadius: 5,
                 cursor: "pointer",
-                background: active ? `${accent}24` : "transparent",
+                background: active
+                  ? `color-mix(in srgb, ${accent} 14%, transparent)`
+                  : "transparent",
               }}
             >
               <span
@@ -71,7 +73,7 @@ export function SplitView({
                   flex: 1,
                   minWidth: 0,
                   fontSize: 12,
-                  color: active ? "#fff" : "#cfcfcf",
+                  color: active ? "var(--cam-text-strong)" : "var(--cam-text)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -79,12 +81,13 @@ export function SplitView({
               >
                 {agent.name}
               </div>
+              <SourceBadge source={agent.source} />
               <span
                 style={{
                   flex: "none",
                   width: 34,
                   height: 3,
-                  background: "#1c1c1c",
+                  background: "var(--cam-bg-inset)",
                   borderRadius: 2,
                   overflow: "hidden",
                 }}
@@ -107,9 +110,9 @@ export function SplitView({
         style={{
           flex: "none",
           height: 6,
-          background: "#1e1e1e",
-          borderTop: "1px solid #1a1a1a",
-          borderBottom: "1px solid #303031",
+          background: "var(--cam-bg)",
+          borderTop: "1px solid var(--cam-border-soft)",
+          borderBottom: "1px solid var(--cam-border)",
         }}
       />
       {selected && (
@@ -119,7 +122,7 @@ export function SplitView({
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
-            background: "#1e1e1e",
+            background: "var(--cam-bg)",
           }}
         >
           <div style={{ flex: "none", padding: "10px 14px 6px" }}>
@@ -132,7 +135,7 @@ export function SplitView({
                 class="mono"
                 style={{
                   fontSize: 13,
-                  color: "#e6e6e6",
+                  color: "var(--cam-text-strong)",
                   fontWeight: 600,
                   flex: 1,
                   overflow: "hidden",
@@ -146,9 +149,9 @@ export function SplitView({
                 <span
                   style={{
                     fontSize: 9,
-                    color: "#7a7a7a",
-                    background: "#252526",
-                    border: "1px solid #3a3a3b",
+                    color: "var(--cam-text-dim)",
+                    background: "var(--cam-bg-elevated)",
+                    border: "1px solid var(--cam-border)",
                     padding: "1px 6px",
                     borderRadius: 8,
                   }}
@@ -157,7 +160,7 @@ export function SplitView({
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11.5, color: "#9a9a9a", marginTop: 4, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 11.5, color: "var(--cam-text-muted)", marginTop: 4, lineHeight: 1.4 }}>
               {selected.task}
             </div>
           </div>
@@ -167,7 +170,7 @@ export function SplitView({
               display: "flex",
               gap: 2,
               padding: "4px 12px 0",
-              borderBottom: "1px solid #2d2d2d",
+              borderBottom: "1px solid var(--cam-border-soft)",
             }}
           >
             {TABS.map((id) => (
@@ -178,7 +181,7 @@ export function SplitView({
                   background: "transparent",
                   border: "none",
                   borderBottom: `2px solid ${tab === id ? accent : "transparent"}`,
-                  color: tab === id ? "#fff" : "#8a8a8a",
+                  color: tab === id ? "var(--cam-text-strong)" : "var(--cam-text-dim)",
                   fontSize: 11.5,
                   fontWeight: 600,
                   padding: "6px 10px",
@@ -197,7 +200,7 @@ export function SplitView({
           <div
             style={{
               flex: "none",
-              borderTop: "1px solid #2d2d2d",
+              borderTop: "1px solid var(--cam-border-soft)",
               padding: "8px 12px",
             }}
           >

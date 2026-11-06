@@ -84,7 +84,7 @@ export function App() {
 
   if (!state) {
     return (
-      <div style={{ padding: 20, color: "#8a8a8a", fontSize: 12.5 }}>
+      <div style={{ padding: 20, color: "var(--cam-text-dim)", fontSize: 12.5 }}>
         Loading Copilot agents…
       </div>
     );

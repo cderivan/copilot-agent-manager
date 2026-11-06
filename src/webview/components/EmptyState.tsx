@@ -10,12 +10,12 @@ export function EmptyState({ state }: { state: AppState }) {
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
-        color: "#6a6a6a",
+        color: "var(--cam-text-faint)",
         padding: "48px 24px",
         textAlign: "center",
       }}
     >
-      <div style={{ fontSize: 30, color: "#4daafc", opacity: 0.5 }}>✦</div>
+      <div style={{ fontSize: 30, color: "var(--cam-running)", opacity: 0.5 }}>✦</div>
       <div style={{ fontSize: 12.5, lineHeight: 1.5, maxWidth: 260 }}>
         {state.emptyReason || "No matching agents."}
       </div>

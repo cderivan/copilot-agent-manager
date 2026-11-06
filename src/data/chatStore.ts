@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import type { SqliteRow, SqliteValue } from "./sqlite";
 import { readTables } from "./sqlite";
+import { readVscodeChatFile } from "./vscodeChats";
 
 export interface ChatTurn {
   turnIndex: number;
@@ -16,13 +17,25 @@ export interface ChatFileRef {
   turnIndex: number;
 }
 
+export interface ChatToolCall {
+  name: string;
+  arg: string;
+  turnIndex: number;
+}
+
 export interface ChatSessionRecord {
   id: string;
+  /** File backing this session: the Copilot DB or one native `.jsonl` file. */
+  path?: string;
   cwd: string;
   repository: string;
   gitBranch: string;
   summary: string;
   agentName: string;
+  /** Model of the most recent request, when the source records it. */
+  model?: string;
+  /** Tool invocations in call order, when the source records them. */
+  tools?: ChatToolCall[];
   createdAt: string;
   updatedAt: string;
   turns: ChatTurn[];
@@ -91,6 +104,7 @@ export function readChatStore(dbPath: string): ChatSessionRecord[] {
     }
     sessions.set(id, {
       id,
+      path: dbPath,
       cwd: text(row.cwd),
       repository: text(row.repository),
       gitBranch: text(row.branch),
@@ -147,12 +161,21 @@ export function readChatStore(dbPath: string): ChatSessionRecord[] {
   return list;
 }
 
-/** Conversation feed for one chat-store session. */
+/** A chat session from either backing store, keyed by its transcript path. */
+function findChatSession(filePath: string, sessionId: string): ChatSessionRecord | undefined {
+  if (filePath.endsWith(".jsonl")) {
+    const record = readVscodeChatFile(filePath);
+    return record && (!sessionId || record.id === sessionId) ? record : undefined;
+  }
+  return readChatStore(filePath).find((candidate) => candidate.id === sessionId);
+}
+
+/** Conversation feed for one chat session. */
 export function chatStoreMessages(
   dbPath: string,
   sessionId: string
 ): Array<{ role: "user" | "assistant"; avatar: string; text: string; mono: boolean }> {
-  const session = readChatStore(dbPath).find((candidate) => candidate.id === sessionId);
+  const session = findChatSession(dbPath, sessionId);
   if (!session) {
     return [];
   }
@@ -173,9 +196,9 @@ export function chatStoreMessages(
   return messages.slice(-80);
 }
 
-/** Markdown rendering for one chat-store session, opened via a virtual document. */
+/** Markdown rendering for one chat session, opened via a virtual document. */
 export function chatStoreMarkdown(dbPath: string, sessionId: string, title: string): string {
-  const session = readChatStore(dbPath).find((candidate) => candidate.id === sessionId);
+  const session = findChatSession(dbPath, sessionId);
   if (!session) {
     return `# ${title}\n\n_No conversation text found in the chat store._`;
   }

@@ -1,44 +1,44 @@
 import type { AccentName, AgentStatus } from "../types";
 
 export const STATUS: Record<AgentStatus, { color: string; label: string }> = {
-  running: { color: "#4daafc", label: "running" },
-  done: { color: "#89d185", label: "done" },
-  waiting: { color: "#cca700", label: "waiting" },
-  paused: { color: "#b48ead", label: "paused" },
-  error: { color: "#f48771", label: "error" },
-  stopped: { color: "#7a7a7a", label: "stopped" },
+  running: { color: "var(--cam-running)", label: "running" },
+  done: { color: "var(--cam-done)", label: "done" },
+  waiting: { color: "var(--cam-waiting)", label: "waiting" },
+  paused: { color: "var(--cam-paused)", label: "paused" },
+  error: { color: "var(--cam-error)", label: "error" },
+  stopped: { color: "var(--cam-stopped)", label: "stopped" },
 };
 
 const TOOL_COLORS: Record<string, string> = {
-  view: "#4daafc",
-  read: "#4daafc",
-  edit: "#c586c0",
-  create: "#dcdcaa",
-  write: "#dcdcaa",
-  apply_patch: "#c586c0",
-  bash: "#ce9178",
-  exec: "#ce9178",
-  read_bash: "#ce9178",
-  stop_bash: "#ce9178",
-  grep: "#4ec9b0",
-  glob: "#4ec9b0",
-  rg: "#4ec9b0",
-  task: "#d97757",
-  agent: "#d97757",
-  skill: "#d7ba7d",
-  todowrite: "#d7ba7d",
-  web_fetch: "#569cd6",
-  sql: "#569cd6",
-  ask_user: "#8a8a8a",
-  report_intent: "#8a8a8a",
-  say: "#8a8a8a",
-  done: "#89d185",
-  error: "#f48771",
-  "·": "#6a6a6a",
+  view: "var(--cam-tool-blue)",
+  read: "var(--cam-tool-blue)",
+  edit: "var(--cam-tool-purple)",
+  create: "var(--cam-tool-yellow)",
+  write: "var(--cam-tool-yellow)",
+  apply_patch: "var(--cam-tool-purple)",
+  bash: "var(--cam-tool-orange)",
+  exec: "var(--cam-tool-orange)",
+  read_bash: "var(--cam-tool-orange)",
+  stop_bash: "var(--cam-tool-orange)",
+  grep: "var(--cam-tool-teal)",
+  glob: "var(--cam-tool-teal)",
+  rg: "var(--cam-tool-teal)",
+  task: "var(--cam-tool-clay)",
+  agent: "var(--cam-tool-clay)",
+  skill: "var(--cam-tool-gold)",
+  todowrite: "var(--cam-tool-gold)",
+  web_fetch: "var(--cam-tool-steel)",
+  sql: "var(--cam-tool-steel)",
+  ask_user: "var(--cam-tool-gray)",
+  report_intent: "var(--cam-tool-gray)",
+  say: "var(--cam-tool-gray)",
+  done: "var(--cam-done)",
+  error: "var(--cam-error)",
+  "·": "var(--cam-text-dim)",
 };
 
 export function accentColor(accent: AccentName): string {
-  return accent === "blue" ? "#4daafc" : "#d97757";
+  return accent === "blue" ? "var(--cam-accent-blue)" : "var(--cam-accent-clay)";
 }
 
 export function formatTokens(tokens: number): string {
@@ -67,7 +67,7 @@ export function formatElapsed(elapsedMs: number): string {
 }
 
 export function toolColor(tag: string): string {
-  return TOOL_COLORS[tag] || "#8a8a8a";
+  return TOOL_COLORS[tag] || "var(--cam-tool-gray)";
 }
 
 export function timeAgo(mtimeMs: number): string {

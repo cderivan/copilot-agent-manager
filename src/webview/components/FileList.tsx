@@ -8,7 +8,7 @@ export function FileList({ a }: { a: Agent }) {
     return (
       <div
         style={{
-          color: "#5a5a5a",
+          color: "var(--cam-text-faint)",
           fontSize: 12,
           textAlign: "center",
           padding: "24px 10px",
@@ -28,12 +28,12 @@ export function FileList({ a }: { a: Agent }) {
             alignItems: "center",
             gap: 8,
             padding: "6px 8px",
-            background: "#252526",
-            border: "1px solid #2d2d2d",
+            background: "var(--cam-bg-elevated)",
+            border: "1px solid var(--cam-border-soft)",
             borderRadius: 5,
           }}
         >
-          <span style={{ color: "#4ec9b0", fontSize: 12 }}>◧</span>
+          <span style={{ color: "var(--cam-tool-teal)", fontSize: 12 }}>◧</span>
           <span
             class="mono"
             title={file.toolName ? `${file.path} · ${file.toolName}` : file.path}
@@ -41,7 +41,7 @@ export function FileList({ a }: { a: Agent }) {
               flex: 1,
               minWidth: 0,
               fontSize: 11.5,
-              color: "#d4d4d4",
+              color: "var(--cam-text-body)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -51,10 +51,10 @@ export function FileList({ a }: { a: Agent }) {
           </span>
           {references ? null : (
             <>
-              <span class="mono" style={{ fontSize: 10.5, color: "#89d185" }}>
+              <span class="mono" style={{ fontSize: 10.5, color: "var(--cam-done)" }}>
                 +{file.add}
               </span>
-              <span class="mono" style={{ fontSize: 10.5, color: "#f48771" }}>
+              <span class="mono" style={{ fontSize: 10.5, color: "var(--cam-error)" }}>
                 −{file.del}
               </span>
               <button

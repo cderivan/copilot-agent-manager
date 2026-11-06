@@ -37,7 +37,7 @@ For every running agent, see the exact tool in flight (`edit src/auth/session.ts
 
 ### 💬 VS Code chat sessions, too
 
-Editor chats live in VS Code's own Copilot store (`session-store.db`), not in the CLI session tree. Copilot Agent Manager reads that SQLite store directly — recent turns included, even while they still only exist in its write-ahead log — and lists those sessions next to CLI ones. They expose their turns and the **files they referenced** (`session_files`), but no tool stream and no subagents, so **Continue** stays hidden for them.
+Editor chats don't live in the CLI session tree. Copilot Agent Manager reads both places VS Code keeps them: its native chat session files (`workspaceStorage/*/chatSessions/*.jsonl`, replayed from their incremental log so the latest turns and tool calls show up immediately) and Copilot's `session-store.db` (read directly, including turns still sitting in its write-ahead log). Sessions present in both are merged by id, so you get the full transcript alongside Copilot's summary and branch. They expose their turns, tool calls, and the **files they referenced**, but no subagents, so **Continue** stays hidden for them.
 
 ### 🔍 Search every session (full-text)
 
@@ -77,7 +77,7 @@ A glanceable status-bar chip (`✦ 2 running · 1.2M tok`) even when the panel i
 
 > 🔎 **Seeing nothing?** First open is scoped to your current workspace. Click the **scope toggle** in the header (or run **“Copilot Agents: Toggle Scope”**) to show **all projects**.
 
-No setup, no API keys, no sign-in. It reads the session events Copilot already writes under `~/.copilot/session-state`, plus VS Code's own chat store (turn that off with `includeChatStore`).
+No setup, no API keys, no sign-in. It reads the session events Copilot already writes under `~/.copilot/session-state`, plus VS Code's own editor chat sessions (turn that off with `includeChatStore`).
 
 ---
 
@@ -89,7 +89,7 @@ All under `copilotAgentManager.*`:
 | --- | --- | --- |
 | `copilotHome` | `""` | Override the Copilot home dir (else `COPILOT_HOME` → `~/.copilot`). |
 | `scope` | `workspace` | Monitor the current folder only, or **all** projects. |
-| `includeChatStore` | `true` | Also read VS Code's Copilot Chat store (`session-store.db`). |
+| `includeChatStore` | `true` | Also read VS Code chat sessions (native `chatSessions` files and Copilot's `session-store.db`). |
 | `defaultLayout` | `tree` | `tree` · `cards` · `split`. |
 | `accent` | `clay` | Accent color (`clay` or `blue`). |
 | `notifyOnFinish` | `true` | Toast when an agent finishes or errors. |
@@ -128,16 +128,20 @@ Each `events.jsonl` line is one event. The interesting ones:
 
 Tool events produced by a subagent carry an `agentId`, and `subagent.started` is itself spawned by a `task` tool call — so the extension rebuilds a real parent/child tree instead of guessing. Status and progress are *derived* from events (Copilot writes no status field), so they are heuristic and tunable via settings.
 
-Editor chat sessions are stored separately, by VS Code:
+Editor chat sessions are stored separately, by VS Code, in two places:
 
 ```
+…/User/workspaceStorage/<hash>/chatSessions/<sessionId>.jsonl
+  snapshot line  ← session id, title, creation date, requests
+  set / append   ← later turns, response parts and tool invocations
+
 …/User/globalStorage/github.copilot-chat/session-store.db
   sessions       ← id, cwd, repository, branch, summary, agent name, timestamps
   turns          ← one row per exchange (user message + assistant response)
   session_files  ← files the session touched, with the tool that touched them
 ```
 
-That file is read without any native dependency: a small read-only SQLite reader parses the database format itself and replays committed `-wal` frames, so a chat that just finished shows up immediately. It is located from the running VS Code's own storage path, so a custom `--user-data-dir` or a portable install resolves correctly. Those rows carry no tool calls or subagent events, so each appears as a single agent for the session; sessions whose turns have no text at all are hidden.
+Neither is read with a native dependency. The SQLite reader parses the database format itself and replays committed `-wal` frames, so a chat that just finished shows up immediately. The native session files are incremental logs, so the reader replays their `set` and `append` operations to reconstruct the latest full session, including assistant text and tool calls. Both stores are located from the running VS Code's own storage path, so a custom `--user-data-dir` or a portable install resolves correctly. Matching sessions are merged by id (the store supplies metadata, the native file the richer transcript). There are no subagent events, so each appears as a single agent for the session; sessions with no text and no file references are hidden.
 </details>
 
 ---
@@ -146,7 +150,7 @@ That file is read without any native dependency: a small read-only SQLite reader
 
 **Does it work without any setup?** Yes — if Copilot writes sessions to `~/.copilot/session-state`, it just works.
 
-**Which Copilot surfaces are covered?** Copilot CLI and VS Code's Copilot CLI runtime (full events, subagents, diffs, resume), plus VS Code's own Copilot Chat store for editor sessions (turns only, no tool stream). Set `copilotAgentManager.includeChatStore` to `false` to ignore the database.
+**Which Copilot surfaces are covered?** Copilot CLI and VS Code's Copilot CLI runtime (full events, subagents, diffs, resume), plus VS Code's own editor chat sessions from its native `chatSessions` files and Copilot's `session-store.db` (turns, tool calls and referenced files; no subagents). Set `copilotAgentManager.includeChatStore` to `false` to ignore both.
 
 **Can it control or stop my agents?** No, by design. It is a read-only monitor; **Continue** launches a fresh resume via `copilot --resume`, it never injects into a live run.
 

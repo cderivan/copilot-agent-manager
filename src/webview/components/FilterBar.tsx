@@ -29,13 +29,13 @@ export function FilterBar({
           display: "flex",
           alignItems: "center",
           gap: 7,
-          background: "#1c1c1c",
-          border: "1px solid #3a3a3b",
+          background: "var(--cam-bg-inset)",
+          border: "1px solid var(--cam-border)",
           borderRadius: 5,
           padding: "5px 9px",
         }}
       >
-        <span style={{ color: "#7a7a7a", fontSize: 13 }}>⌕</span>
+        <span style={{ color: "var(--cam-text-dim)", fontSize: 13 }}>⌕</span>
         <input
           class="filter"
           value={filter}
@@ -50,7 +50,11 @@ export function FilterBar({
             class="chip"
             style={
               statusFilter === id
-                ? { color: "#f0f0f0", borderColor: accent, background: `${accent}29` }
+                ? {
+                  color: "var(--cam-text-strong)",
+                  borderColor: accent,
+                  background: `color-mix(in srgb, ${accent} 16%, transparent)`,
+                }
                 : {}
             }
             onClick={() => onStatus(id)}

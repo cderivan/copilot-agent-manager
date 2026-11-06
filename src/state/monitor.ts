@@ -3,7 +3,8 @@ import { readBuildConfig, readScanConfig } from "../config";
 import { readChatStore, type ChatSessionRecord } from "../data/chatStore";
 import { discoverSessions } from "../data/discovery";
 import { buildState } from "../data/model";
-import { chatStorePath, resolveCopilotHome, sessionsDir } from "../data/paths";
+import { chatStorePath, inWorkspace, resolveCopilotHome, sessionsDir } from "../data/paths";
+import { mergeChatRecords, readVscodeChats } from "../data/vscodeChats";
 import type { Agent, AgentStatus, AppState, ToastInfo } from "../types";
 import { TranscriptWatcher } from "./watcher";
 
@@ -98,10 +99,25 @@ export class AgentMonitor implements vscode.Disposable {
     const cfg = readBuildConfig(copilotHome);
     const entries = discoverSessions(scan.scope, scan.maxSessions);
     this.chatPath = chatStorePath(this.userDir);
-    this.chatRecords = scan.includeChatStore ? readChatStore(this.chatPath) : [];
+    if (scan.includeChatStore) {
+      const stored = readChatStore(this.chatPath);
+      const native = readVscodeChats(this.userDir || "");
+      this.chatRecords = mergeChatRecords(stored, native);
+    } else {
+      this.chatRecords = [];
+    }
+    // Search always sees every chat session; the live list stays scoped and
+    // capped like CLI sessions so an old chat history cannot flood it.
+    const scopedChat =
+      scan.scope === "workspace"
+        ? this.chatRecords.filter((record) => inWorkspace(record.cwd))
+        : this.chatRecords;
+    const recentChat = [...scopedChat]
+      .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+      .slice(0, Math.max(scan.maxSessions, 6));
     const state = buildState(
       entries,
-      { dbPath: this.chatPath, records: this.chatRecords },
+      { dbPath: this.chatPath, records: recentChat },
       this.selectedId,
       cfg,
       Date.now()

@@ -13,9 +13,9 @@ export interface ContinueTargetAgent {
 }
 
 const PRIMARY_STYLE = {
-  borderColor: "#1177bb",
-  background: "#0e639c",
-  color: "#fff",
+  borderColor: "var(--cam-button-hover)",
+  background: "var(--cam-button-bg)",
+  color: "var(--cam-button-fg)",
 };
 
 /** Continue / Read / Copy id actions for one agent. */

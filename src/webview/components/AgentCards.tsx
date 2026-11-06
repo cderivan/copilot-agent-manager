@@ -2,7 +2,7 @@ import type { Agent, AppState } from "../../types";
 import { STATUS, toolColor } from "../theme";
 import { ContinueBar } from "./ContinueBar";
 import { EmptyState } from "./EmptyState";
-import { LogTail, Progress, StatusDot, ToolTag } from "./primitives";
+import { LogTail, Progress, SourceBadge, StatusDot, ToolTag } from "./primitives";
 
 /** Cards layout: one live card per agent. */
 export function AgentCards({
@@ -38,8 +38,8 @@ export function AgentCards({
             title={active ? "Click to collapse" : "Click to expand"}
             onClick={() => onAgentClick(agent.id)}
             style={{
-              background: "#2b2b2c",
-              border: `1px solid ${active ? accent : "#3a3a3b"}`,
+              background: "var(--cam-bg-raised)",
+              border: `1px solid ${active ? accent : "var(--cam-border)"}`,
               borderRadius: 8,
               overflow: "hidden",
               cursor: "pointer",
@@ -64,7 +64,7 @@ export function AgentCards({
                   flex: 1,
                   minWidth: 0,
                   fontSize: 12.5,
-                  color: "#e0e0e0",
+                  color: "var(--cam-text-strong)",
                   fontWeight: 600,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -73,6 +73,7 @@ export function AgentCards({
               >
                 {agent.name}
               </span>
+              <SourceBadge source={agent.source} />
               <span
                 style={{
                   flex: "none",
@@ -80,7 +81,7 @@ export function AgentCards({
                   fontWeight: 700,
                   letterSpacing: ".04em",
                   color: status.color,
-                  background: `${status.color}22`,
+                  background: `color-mix(in srgb, ${status.color} 13%, transparent)`,
                   padding: "2px 6px",
                   borderRadius: 8,
                   textTransform: "uppercase",
@@ -93,7 +94,7 @@ export function AgentCards({
               style={{
                 padding: "0 11px 8px",
                 fontSize: 11.5,
-                color: "#9a9a9a",
+                color: "var(--cam-text-muted)",
                 lineHeight: 1.4,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -102,13 +103,67 @@ export function AgentCards({
             >
               {agent.task}
             </div>
+            {agent.model && (
+              <div style={{ padding: "0 11px 8px", display: "flex" }}>
+                <span
+                  class="mono"
+                  style={{
+                    fontSize: 9.5,
+                    color: "var(--cam-text-dim)",
+                    background: "var(--cam-bg-inset)",
+                    border: "1px solid var(--cam-border)",
+                    padding: "1px 5px",
+                    borderRadius: 8,
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {agent.model}
+                </span>
+              </div>
+            )}
+            {agent.status !== "running" && agent.lastToolTag && (
+              <div
+                class="mono"
+                style={{
+                  margin: "0 11px 9px",
+                  padding: "7px 9px",
+                  background: "var(--cam-bg-inset)",
+                  borderRadius: 5,
+                  fontSize: 11,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  style={{
+                    flex: "none",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: ".04em",
+                    color: "var(--cam-text-dim)",
+                  }}
+                >
+                  LAST
+                </span>
+                <ToolTag
+                  tag={agent.lastToolTag || ""}
+                  arg={agent.lastToolArg || ""}
+                  color={toolColor(agent.lastToolTag || "")}
+                />
+              </div>
+            )}
             {agent.status === "running" && (
               <div
                 class="mono"
                 style={{
                   margin: "0 11px 9px",
                   padding: "7px 9px",
-                  background: "#1c1c1c",
+                  background: "var(--cam-bg-inset)",
                   borderRadius: 5,
                   fontSize: 11,
                   display: "flex",
@@ -141,7 +196,7 @@ export function AgentCards({
               <div>
                 <div
                   style={{
-                    borderTop: "1px solid #3a3a3b",
+                    borderTop: "1px solid var(--cam-border)",
                     padding: "8px 11px",
                     maxHeight: 120,
                     overflowY: "auto",
@@ -149,7 +204,7 @@ export function AgentCards({
                 >
                   <LogTail lines={agent.logTail} max={5} />
                 </div>
-                <div style={{ borderTop: "1px solid #3a3a3b", padding: "7px 10px" }}>
+                <div style={{ borderTop: "1px solid var(--cam-border)", padding: "7px 10px" }}>
                   <ContinueBar t={agent} />
                 </div>
               </div>

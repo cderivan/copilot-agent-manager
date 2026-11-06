@@ -9,7 +9,7 @@ import type {
   SessionFileChange,
   SessionSummary,
 } from "../types";
-import type { ChatSessionRecord } from "./chatStore";
+import type { ChatSessionRecord, ChatToolCall } from "./chatStore";
 import type { SessionEntry } from "./discovery";
 import {
   buildAgent,
@@ -17,6 +17,7 @@ import {
   eventAgentId,
   findSessionTask,
   formatClock,
+  modelLabel,
   parseTimestamp,
 } from "./events";
 import { parseJsonl, readTail } from "./fsText";
@@ -156,29 +157,59 @@ export function buildChatAgents(
       .replace(/\s+/g, " ")
       .slice(0, 160);
 
-    const logTail = record.turns
-      .flatMap((turn) => {
-        const time = formatClock(turn.timestamp);
-        const lines: LogLine[] = [];
-        if (turn.userMessage) {
-          lines.push({
-            time,
-            tag: "you",
-            text: turn.userMessage.replace(/\s+/g, " ").slice(0, 120),
-            kind: "text",
-          });
-        }
-        if (turn.assistantResponse) {
-          lines.push({
-            time,
-            tag: "say",
-            text: turn.assistantResponse.replace(/\s+/g, " ").slice(0, 140),
-            kind: "text",
-          });
-        }
-        return lines;
-      })
-      .slice(-cfg.maxLogLines);
+    const tools = record.tools ?? [];
+    const lastTool = tools.length ? tools[tools.length - 1] : undefined;
+    const toolsByTurn = new Map<number, ChatToolCall[]>();
+    for (const tool of tools) {
+      const list = toolsByTurn.get(tool.turnIndex);
+      if (list) {
+        list.push(tool);
+      } else {
+        toolsByTurn.set(tool.turnIndex, [tool]);
+      }
+    }
+
+    const logLines: LogLine[] = [];
+    for (const turn of record.turns) {
+      const time = formatClock(turn.timestamp);
+      if (turn.userMessage) {
+        logLines.push({
+          time,
+          tag: "you",
+          text: turn.userMessage.replace(/\s+/g, " ").slice(0, 120),
+          kind: "text",
+        });
+      }
+      for (const tool of toolsByTurn.get(turn.turnIndex) ?? []) {
+        logLines.push({
+          time,
+          tag: tool.name,
+          text: (tool.arg || tool.name).slice(0, 120),
+          kind: "tool",
+        });
+      }
+      toolsByTurn.delete(turn.turnIndex);
+      if (turn.assistantResponse) {
+        logLines.push({
+          time,
+          tag: "say",
+          text: turn.assistantResponse.replace(/\s+/g, " ").slice(0, 140),
+          kind: "text",
+        });
+      }
+    }
+    for (const remaining of toolsByTurn.values()) {
+      const time = formatClock(record.updatedAt);
+      for (const tool of remaining) {
+        logLines.push({
+          time,
+          tag: tool.name,
+          text: (tool.arg || tool.name).slice(0, 120),
+          kind: "tool",
+        });
+      }
+    }
+    const logTail = logLines.slice(-cfg.maxLogLines);
 
     return {
       id: `${record.id}:main`,
@@ -190,13 +221,15 @@ export function buildChatAgents(
       agentType: record.agentName || "chat",
       task,
       status,
-      model: "",
+      model: modelLabel(record.model),
       depth: 0,
       parentId: null,
-      currentToolTag: "",
-      currentToolArg: "",
+      currentToolTag: status === "running" && lastTool ? lastTool.name : "",
+      currentToolArg: status === "running" && lastTool ? lastTool.arg : "",
+      lastToolTag: lastTool?.name || "",
+      lastToolArg: lastTool?.arg || "",
       progress: null,
-      toolCount: 0,
+      toolCount: tools.length,
       tokens: 0,
       elapsedMs: createdMs && updatedMs ? Math.max(0, updatedMs - createdMs) : 0,
       startedAt: record.createdAt || null,
@@ -208,7 +241,7 @@ export function buildChatAgents(
         del: 0,
         toolName: file.toolName,
       })),
-      transcriptPath: dbPath,
+      transcriptPath: record.path || dbPath,
       cwd: record.cwd,
     };
   });
@@ -255,27 +288,33 @@ export function buildState(
   cfg: BuildConfig,
   nowMs: number
 ): AppState {
-  const agents: Agent[] = [];
-  const sessions: SessionSummary[] = [];
+  const groups: Array<{ summary: SessionSummary; agents: Agent[]; sortMs: number }> = [];
   const seen = new Set<string>();
 
   for (const entry of entries) {
     const sessionAgents = buildSessionAgents(entry, cfg, nowMs);
-    agents.push(...sessionAgents);
     seen.add(entry.sessionId);
     const main = sessionAgents[0];
-    sessions.push({
-      id: entry.sessionId,
-      source: "events",
-      title: main?.task || entry.meta.name || entry.sessionId.slice(0, 8),
-      cwd: main?.cwd || entry.meta.cwd,
-      gitBranch: entry.meta.gitBranch,
-      running: sessionAgents.filter((agent) => agent.status === "running").length,
-      done: sessionAgents.filter((agent) => agent.status === "done").length,
-      total: sessionAgents.length,
-      tokens: sessionAgents.reduce((total, agent) => total + agent.tokens, 0),
-      mainTranscriptPath: entry.eventsPath,
-      files: mergeSessionFiles(sessionAgents),
+    const lastActivity = sessionAgents.reduce(
+      (latest, agent) => Math.max(latest, parseTimestamp(agent.updatedAt)),
+      0
+    );
+    groups.push({
+      agents: sessionAgents,
+      sortMs: Math.max(entry.mtimeMs, lastActivity),
+      summary: {
+        id: entry.sessionId,
+        source: "events",
+        title: main?.task || entry.meta.name || entry.sessionId.slice(0, 8),
+        cwd: main?.cwd || entry.meta.cwd,
+        gitBranch: entry.meta.gitBranch,
+        running: sessionAgents.filter((agent) => agent.status === "running").length,
+        done: sessionAgents.filter((agent) => agent.status === "done").length,
+        total: sessionAgents.length,
+        tokens: sessionAgents.reduce((total, agent) => total + agent.tokens, 0),
+        mainTranscriptPath: entry.eventsPath,
+        files: mergeSessionFiles(sessionAgents),
+      },
     });
   }
 
@@ -283,22 +322,30 @@ export function buildState(
   const chatAgents = buildChatAgents(chat.dbPath, chatOnly, cfg, nowMs);
   const chatById = new Map(chatOnly.map((record) => [record.id, record]));
   for (const agent of chatAgents) {
-    agents.push(agent);
     const record = chatById.get(agent.sessionId);
-    sessions.push({
-      id: agent.sessionId,
-      source: "chat-store",
-      title: agent.task,
-      cwd: agent.cwd,
-      gitBranch: record?.gitBranch || "",
-      running: agent.status === "running" ? 1 : 0,
-      done: agent.status === "done" ? 1 : 0,
-      total: 1,
-      tokens: agent.tokens,
-      mainTranscriptPath: chat.dbPath,
-      files: mergeSessionFiles([agent]),
+    groups.push({
+      agents: [agent],
+      sortMs: parseTimestamp(agent.updatedAt || record?.updatedAt),
+      summary: {
+        id: agent.sessionId,
+        source: "chat-store",
+        title: agent.task,
+        cwd: agent.cwd,
+        gitBranch: record?.gitBranch || "",
+        running: agent.status === "running" ? 1 : 0,
+        done: agent.status === "done" ? 1 : 0,
+        total: 1,
+        tokens: agent.tokens,
+        mainTranscriptPath: agent.transcriptPath,
+        files: mergeSessionFiles([agent]),
+      },
     });
   }
+
+  // Most recent activity first, across CLI and VS Code chat sessions alike.
+  groups.sort((a, b) => b.sortMs - a.sortMs);
+  const agents: Agent[] = groups.flatMap((group) => group.agents);
+  const sessions: SessionSummary[] = groups.map((group) => group.summary);
 
   let selected =
     selectedId && agents.find((agent) => agent.id === selectedId) ? selectedId : null;

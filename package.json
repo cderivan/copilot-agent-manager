@@ -9,12 +9,12 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cderivan/claude-agent-manager"
+    "url": "https://github.com/cderivan/copilot-agent-manager"
   },
   "bugs": {
-    "url": "https://github.com/cderivan/claude-agent-manager/issues"
+    "url": "https://github.com/cderivan/copilot-agent-manager/issues"
   },
-  "homepage": "https://github.com/cderivan/claude-agent-manager#readme",
+  "homepage": "https://github.com/cderivan/copilot-agent-manager#readme",
   "galleryBanner": {
     "color": "#1e1e1e",
     "theme": "dark"
@@ -60,7 +60,8 @@
         {
           "type": "webview",
           "id": "copilotAgentManager.view",
-          "name": "Agents"
+          "name": "Agents",
+          "icon": "media/agent.svg"
         }
       ]
     },
@@ -142,7 +143,7 @@
         "copilotAgentManager.includeChatStore": {
           "type": "boolean",
           "default": true,
-          "description": "Also read VS Code's Copilot Chat session store (session-store.db), so editor chat sessions appear next to CLI sessions."
+          "description": "Also read VS Code chat sessions (native chatSessions files and Copilot's session-store.db), so editor chat sessions appear next to CLI sessions."
         },
         "copilotAgentManager.maxSessions": {
           "type": "number",
@@ -169,16 +170,16 @@
   },
   "scripts": {
     "build": "node esbuild.js",
-    "test": "node esbuild.js --tests && node --test out/tests/events.test.js out/tests/model.test.js out/tests/sqlite.test.js out/tests/chatStore.test.js",
+    "test": "node esbuild.js --tests && node --test out/tests/events.test.js out/tests/model.test.js out/tests/sqlite.test.js out/tests/chatStore.test.js out/tests/vscodeChats.test.js",
     "watch": "node esbuild.js --watch",
     "vscode:prepublish": "node esbuild.js --production",
     "package": "npx --yes @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^26.6.5",
     "@types/vscode": "^1.84.0",
-    "esbuild": "^0.21.5",
-    "preact": "^10.22.0",
-    "typescript": "^5.4.5"
+    "esbuild": "^0.28.1",
+    "preact": "^11.1.1",
+    "typescript": "^7.0.2"
   }
 }

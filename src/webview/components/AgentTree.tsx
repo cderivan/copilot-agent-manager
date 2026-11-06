@@ -2,7 +2,7 @@ import type { Agent, AppState } from "../../types";
 import { STATUS, toolColor } from "../theme";
 import { ContinueBar } from "./ContinueBar";
 import { EmptyState } from "./EmptyState";
-import { LogTail, Progress, StatusDot, ToolTag } from "./primitives";
+import { LogTail, Progress, SourceBadge, StatusDot, ToolTag } from "./primitives";
 
 /** Tree layout: hierarchical rows with inline detail for the selected agent. */
 export function AgentTree({
@@ -38,7 +38,9 @@ export function AgentTree({
                 padding: `6px 8px 6px ${indent}px`,
                 borderRadius: 5,
                 cursor: "pointer",
-                background: active ? `${accent}24` : "transparent",
+                background: active
+                  ? `color-mix(in srgb, ${accent} 14%, transparent)`
+                  : "transparent",
               }}
             >
               <span
@@ -69,7 +71,11 @@ export function AgentTree({
                   flex: 1,
                   minWidth: 0,
                   fontSize: 12.5,
-                  color: active ? "#fff" : agent.status === "error" ? "#e0a89a" : "#cfcfcf",
+                  color: active
+                    ? "var(--cam-text-strong)"
+                    : agent.status === "error"
+                      ? "var(--cam-error)"
+                      : "var(--cam-text)",
                   fontWeight: agent.depth === 0 ? 700 : 500,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -78,14 +84,15 @@ export function AgentTree({
               >
                 {agent.name}
               </span>
+              <SourceBadge source={agent.source} />
               {agent.model && (
                 <span
                   style={{
                     flex: "none",
                     fontSize: 9.5,
-                    color: "#7a7a7a",
-                    background: "#1e1e1e",
-                    border: "1px solid #3a3a3b",
+                    color: "var(--cam-text-dim)",
+                    background: "var(--cam-bg)",
+                    border: "1px solid var(--cam-border)",
                     padding: "1px 5px",
                     borderRadius: 8,
                   }}
@@ -100,7 +107,7 @@ export function AgentTree({
                 style={{
                   padding: `1px 8px 5px ${indent + 21}px`,
                   fontSize: 11,
-                  color: "#8a8a8a",
+                  color: "var(--cam-text-dim)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -129,17 +136,17 @@ function AgentDetail({ a, indent }: { a: Agent; indent: number }) {
     <div
       style={{
         margin: `3px 6px 10px ${indent}px`,
-        background: "#1e1e1e",
-        border: "1px solid #3a3a3b",
+        background: "var(--cam-bg)",
+        border: "1px solid var(--cam-border)",
         borderRadius: 7,
         overflow: "hidden",
       }}
     >
-      <div style={{ padding: "9px 11px 8px", borderBottom: "1px solid #2d2d2d" }}>
+      <div style={{ padding: "9px 11px 8px", borderBottom: "1px solid var(--cam-border-soft)" }}>
         <div
           style={{
             fontSize: 10,
-            color: "#7a7a7a",
+            color: "var(--cam-text-dim)",
             letterSpacing: ".05em",
             fontWeight: 700,
             marginBottom: 3,
@@ -147,13 +154,13 @@ function AgentDetail({ a, indent }: { a: Agent; indent: number }) {
         >
           TASK
         </div>
-        <div style={{ fontSize: 12, color: "#d4d4d4", lineHeight: 1.4 }}>{a.task}</div>
+        <div style={{ fontSize: 12, color: "var(--cam-text-body)", lineHeight: 1.4 }}>{a.task}</div>
       </div>
       <div style={{ padding: "9px 11px" }}>
         <div
           style={{
             fontSize: 10,
-            color: "#7a7a7a",
+            color: "var(--cam-text-dim)",
             letterSpacing: ".05em",
             fontWeight: 700,
             marginBottom: 5,
@@ -188,7 +195,7 @@ function AgentDetail({ a, indent }: { a: Agent; indent: number }) {
       </div>
       <div
         style={{
-          borderTop: "1px solid #2d2d2d",
+          borderTop: "1px solid var(--cam-border-soft)",
           padding: "8px 11px",
           maxHeight: 140,
           overflowY: "auto",
@@ -196,7 +203,7 @@ function AgentDetail({ a, indent }: { a: Agent; indent: number }) {
       >
         <LogTail lines={a.logTail} max={6} />
       </div>
-      <div style={{ borderTop: "1px solid #2d2d2d", padding: "8px 10px" }}>
+      <div style={{ borderTop: "1px solid var(--cam-border-soft)", padding: "8px 10px" }}>
         <ContinueBar t={a} />
       </div>
     </div>

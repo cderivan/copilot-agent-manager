@@ -31,15 +31,15 @@ export function SessionChanges({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          background: "#252526",
-          border: "1px solid #3a3a3b",
+          background: "var(--cam-bg-elevated)",
+          border: "1px solid var(--cam-border)",
           borderRadius: 6,
           padding: "7px 10px",
           cursor: "pointer",
-          color: "#cfcfcf",
+          color: "var(--cam-text)",
         }}
       >
-        <span style={{ color: "#4ec9b0" }}>◧</span>
+        <span style={{ color: "var(--cam-tool-teal)" }}>◧</span>
         <span style={{ flex: 1, textAlign: "left", fontSize: 12 }}>
           {references
             ? `${session.files.length} file${session.files.length === 1 ? "" : "s"} referenced this session`
@@ -47,15 +47,15 @@ export function SessionChanges({
         </span>
         {references ? null : (
           <>
-            <span class="mono" style={{ fontSize: 11, color: "#89d185" }}>
+            <span class="mono" style={{ fontSize: 11, color: "var(--cam-done)" }}>
               +{added}
             </span>
-            <span class="mono" style={{ fontSize: 11, color: "#f48771" }}>
+            <span class="mono" style={{ fontSize: 11, color: "var(--cam-error)" }}>
               −{removed}
             </span>
           </>
         )}
-        <span style={{ color: "#7a7a7a" }}>{open ? "▾" : "▸"}</span>
+        <span style={{ color: "var(--cam-text-dim)" }}>{open ? "▾" : "▸"}</span>
       </button>
       {open && (
         <div
@@ -76,12 +76,12 @@ export function SessionChanges({
                 alignItems: "center",
                 gap: 8,
                 padding: "6px 8px",
-                background: "#1e1e1e",
-                border: "1px solid #2d2d2d",
+                background: "var(--cam-bg)",
+                border: "1px solid var(--cam-border-soft)",
                 borderRadius: 5,
               }}
             >
-              <span style={{ color: "#4ec9b0", fontSize: 12 }}>◧</span>
+              <span style={{ color: "var(--cam-tool-teal)", fontSize: 12 }}>◧</span>
               <span
                 class="mono"
                 title={file.toolName ? `${file.path} · ${file.toolName}` : file.path}
@@ -89,7 +89,7 @@ export function SessionChanges({
                   flex: 1,
                   minWidth: 0,
                   fontSize: 11.5,
-                  color: "#d4d4d4",
+                  color: "var(--cam-text-body)",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -101,7 +101,7 @@ export function SessionChanges({
               </span>
               {file.agentCount > 1 && (
                 <span
-                  style={{ flex: "none", fontSize: 9.5, color: "#7a7a7a" }}
+                  style={{ flex: "none", fontSize: 9.5, color: "var(--cam-text-dim)" }}
                   title={`${file.agentCount} agents touched this file`}
                 >
                   {file.agentCount}×
@@ -109,10 +109,10 @@ export function SessionChanges({
               )}
               {references ? null : (
                 <>
-                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#89d185" }}>
+                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "var(--cam-done)" }}>
                     +{file.add}
                   </span>
-                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "#f48771" }}>
+                  <span class="mono" style={{ flex: "none", fontSize: 10.5, color: "var(--cam-error)" }}>
                     −{file.del}
                   </span>
                   <button

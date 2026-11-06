@@ -1,4 +1,4 @@
-import type { JSX } from "preact";
+import type { CSSProperties, JSX } from "preact";
 import type { SearchResult } from "../../types";
 import { runAction } from "../api";
 import { timeAgo } from "../theme";
@@ -56,13 +56,13 @@ export function SearchPanel({
           display: "flex",
           alignItems: "center",
           gap: 7,
-          background: "#1c1c1c",
-          border: "1px solid #3a3a3b",
+          background: "var(--cam-bg-inset)",
+          border: "1px solid var(--cam-border)",
           borderRadius: 5,
           padding: "5px 9px",
         }}
       >
-        <span style={{ color: "#7a7a7a", fontSize: 13 }}>⌕</span>
+        <span style={{ color: "var(--cam-text-dim)", fontSize: 13 }}>⌕</span>
         <input
           class="filter"
           autofocus
@@ -78,7 +78,7 @@ export function SearchPanel({
         {searching && (
           <span
             class="spinner"
-            style={{ width: 11, height: 11, "--c": "#4daafc" } as JSX.CSSProperties}
+            style={{ width: 11, height: 11, "--c": "var(--cam-running)" } as CSSProperties}
           />
         )}
       </div>
@@ -90,7 +90,7 @@ export function SearchPanel({
           alignItems: "center",
           gap: 8,
           fontSize: 11,
-          color: "#8a8a8a",
+          color: "var(--cam-text-dim)",
         }}
       >
         <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
@@ -121,7 +121,7 @@ export function SearchPanel({
         {trimmed.length < 2 && (
           <div
             style={{
-              color: "#6a6a6a",
+              color: "var(--cam-text-faint)",
               fontSize: 12,
               padding: "20px 12px",
               lineHeight: 1.6,
@@ -130,14 +130,15 @@ export function SearchPanel({
             {
               "Search the full text of every Copilot session. Find a past session by what was said in it, then "
             }
-            <b style={{ color: "#9a9a9a" }}>Continue</b> or <b style={{ color: "#9a9a9a" }}>Read</b>{" "}
+            <b style={{ color: "var(--cam-text-muted)" }}>Continue</b> or{" "}
+            <b style={{ color: "var(--cam-text-muted)" }}>Read</b>{" "}
             it.
           </div>
         )}
         {trimmed.length >= 2 && results.length === 0 && !searching && (
           <div
             style={{
-              color: "#5a5a5a",
+              color: "var(--cam-text-faint)",
               fontSize: 12,
               textAlign: "center",
               padding: "30px 10px",
@@ -150,8 +151,8 @@ export function SearchPanel({
           <div
             key={result.sessionId + index}
             style={{
-              border: "1px solid #2d2d2d",
-              background: "#1e1e1e",
+              border: "1px solid var(--cam-border-soft)",
+              background: "var(--cam-bg)",
               borderRadius: 6,
               overflow: "hidden",
             }}
@@ -163,6 +164,8 @@ export function SearchPanel({
                 runAction("readConversation", {
                   transcriptPath: result.transcriptPath,
                   name: result.agentName,
+                  sessionId: result.sessionId,
+                  source: result.source,
                 })
               }
               style={{ padding: "8px 10px", cursor: "pointer" }}
@@ -174,7 +177,7 @@ export function SearchPanel({
                     width: 7,
                     height: 7,
                     flex: "none",
-                    background: result.isSubagent ? "#b48ead" : "#4daafc",
+                    background: result.isSubagent ? "var(--cam-paused)" : "var(--cam-running)",
                   }}
                 />
                 <span
@@ -183,7 +186,7 @@ export function SearchPanel({
                     flex: 1,
                     minWidth: 0,
                     fontSize: 12,
-                    color: "#e0e0e0",
+                    color: "var(--cam-text-strong)",
                     fontWeight: 600,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -192,14 +195,14 @@ export function SearchPanel({
                 >
                   {result.projectName || result.agentName}
                 </span>
-                <span style={{ flex: "none", fontSize: 10, color: "#7a7a7a" }}>
+                <span style={{ flex: "none", fontSize: 10, color: "var(--cam-text-dim)" }}>
                   {result.matchCount} hit{result.matchCount === 1 ? "" : "s"}
                 </span>
-                <span style={{ flex: "none", fontSize: 10, color: "#7a7a7a" }}>
+                <span style={{ flex: "none", fontSize: 10, color: "var(--cam-text-dim)" }}>
                   {timeAgo(result.mtimeMs)}
                 </span>
               </div>
-              <div style={{ fontSize: 10.5, color: "#7a7a7a", marginTop: 2 }}>
+              <div style={{ fontSize: 10.5, color: "var(--cam-text-dim)", marginTop: 2 }}>
                 matched in {result.agentName}
                 {result.isSubagent ? " (subagent)" : ""}
                 {result.agentMatches > 1 ? ` +${result.agentMatches - 1} more` : ""}
@@ -208,7 +211,7 @@ export function SearchPanel({
                 class="mono"
                 style={{
                   fontSize: 11,
-                  color: "#bdbdbd",
+                  color: "var(--cam-text-body)",
                   marginTop: 4,
                   lineHeight: 1.5,
                   maxHeight: 54,
@@ -218,7 +221,7 @@ export function SearchPanel({
                 {highlight(result.snippet, trimmed)}
               </div>
             </div>
-            <div style={{ borderTop: "1px solid #2d2d2d", padding: "7px 10px" }}>
+            <div style={{ borderTop: "1px solid var(--cam-border-soft)", padding: "7px 10px" }}>
               <ContinueBar
                 t={{
                   sessionId: result.sessionId,
